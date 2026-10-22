@@ -1,0 +1,2115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>班级作业收交情况记录</title>
+<style>
+  :root{
+    --bg:#f3f5f9;
+    --card:#ffffff;
+    --line:#e3e7ef;
+    --text:#1f2937;
+    --muted:#6b7280;
+    --primary:#2563eb;
+    --primary-weak:#e8efff;
+    --done:#16a34a;
+    --done-weak:#e7f6ec;
+    --excused:#64748b;
+    --excused-weak:#eef1f5;
+    --none-border:#cbd5e1;
+    --danger:#dc2626;
+    --danger-weak:#fdeaea;
+    --shadow:0 2px 8px rgba(15,23,42,.06);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; height:100%;}
+  body{
+    font-family:-apple-system,"Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+    background:var(--bg); color:var(--text);
+    font-size:17px; line-height:1.45;
+    -webkit-user-select:none; user-select:none;
+  }
+  button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit;}
+
+  /* 顶部 */
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:#fff; border-bottom:1px solid var(--line);
+    padding:10px 16px; box-shadow:var(--shadow);
+  }
+  .top-inner{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;}
+  .top-right{display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end;}
+  .remember-toggle{display:flex; align-items:center; gap:5px; font-size:13px; color:var(--muted);
+    white-space:nowrap; user-select:none; cursor:pointer;}
+  .remember-toggle input{width:17px; height:17px; margin:0; accent-color:var(--primary); cursor:pointer;}
+  .brand{font-weight:800; font-size:20px; letter-spacing:.5px;}
+  .brand .cls{color:var(--primary);}
+  .today-label{font-size:14px; color:var(--muted);}
+
+  /* 视图容器 */
+  main{padding:14px 16px 96px;}
+  .view{display:none;}
+  .view.active{display:block; animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+
+  /* 通用卡片 */
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; box-shadow:var(--shadow); margin-bottom:14px;}
+  .card h3{margin:0 0 10px; font-size:17px;}
+  .hint{color:var(--muted); font-size:14px;}
+
+  /* 选择器行 */
+  .picker-row{display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;}
+  .picker-label{font-weight:700; font-size:16px; min-width:42px; color:var(--muted);}
+  .chips{display:flex; gap:8px; flex-wrap:wrap;}
+  .chip{
+    padding:12px 18px; border-radius:12px; font-size:17px; font-weight:600;
+    border:2px solid var(--line); background:#fff; color:var(--text);
+    transition:all .12s ease; min-height:48px;
+  }
+  .chip:active{transform:scale(.96);}
+  .chip.on{background:var(--primary); border-color:var(--primary); color:#fff; box-shadow:0 4px 10px rgba(37,99,235,.25);}
+
+  /* 日期导航 */
+  .date-nav{display:flex; align-items:center; gap:14px;}
+  .date-nav .arrow{
+    width:52px; height:52px; border-radius:12px; background:var(--primary-weak);
+    color:var(--primary); font-size:26px; font-weight:800; line-height:1;
+    display:flex; align-items:center; justify-content:center; border:2px solid transparent;
+  }
+  .date-nav .arrow:active{transform:scale(.94);}
+  .date-display{position:relative; font-size:22px; font-weight:800; padding:8px 10px; border-radius:10px;}
+  .date-display input[type=date]{
+    position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer;
+  }
+
+  /* 统计概览条 */
+  .counter{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .count-pill{
+    padding:8px 14px; border-radius:10px; font-weight:700; font-size:16px;
+    background:#f1f5f9; color:var(--text);
+  }
+  .count-pill b{font-size:20px; margin-left:3px;}
+  .count-pill.done{background:var(--done-weak); color:var(--done);}
+  .count-pill.none{background:var(--danger-weak); color:var(--danger);}
+  .count-pill.excused{background:var(--excused-weak); color:var(--excused);}
+
+  /* 分组名单 */
+  .group-block{margin-bottom:16px;}
+  .group-head{
+    display:flex; align-items:center; justify-content:space-between;
+    font-weight:800; font-size:17px; margin-bottom:8px; padding:6px 4px;
+  }
+  .group-head .gname{color:var(--primary);}
+  .group-head .gstat{font-size:15px; color:var(--muted); font-weight:600;}
+  .grid{display:grid; grid-template-columns:repeat(12,1fr); gap:5px;}
+  @media (max-width:900px){ .grid{grid-template-columns:repeat(auto-fill,minmax(76px,1fr));} }
+
+  .stu{
+    position:relative; border:2px solid var(--none-border); border-radius:9px;
+    background:#fff; min-height:52px; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:1px; padding:4px 1px;
+    transition:all .12s ease; text-align:center; overflow:hidden;
+  }
+  .stu:active{transform:scale(.95);}
+  .stu .nm{font-weight:800; font-size:14px; white-space:nowrap; max-width:100%;}
+  .stu .st{font-size:11px; font-weight:700; color:var(--muted);}
+  .stu.done{background:var(--done); border-color:var(--done);}
+  .stu.done .nm,.stu.done .st{color:#fff;}
+  .stu.excused{background:var(--excused); border-color:var(--excused);}
+  .stu.excused .nm,.stu.excused .st{color:#fff;}
+
+  /* 快捷操作栏（普通卡片，位于名单上方） */
+  .sticky-actions{
+    background:#fff; border:1px solid var(--line); border-radius:12px;
+    padding:10px 12px; margin:4px 0 14px;
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap; box-shadow:var(--shadow);
+  }
+  .act-btn{
+    padding:12px 18px; border-radius:11px; font-weight:700; font-size:16px;
+    background:#f1f5f9; color:var(--text); border:2px solid var(--line);
+  }
+  .act-btn.primary{background:var(--primary); color:#fff; border-color:var(--primary);}
+  .act-btn.done{background:var(--done); color:#fff; border-color:var(--done);}
+  .save-state{margin-left:auto; font-size:14px; color:var(--muted); font-weight:600;}
+
+  /* 底部导航 */
+  nav.bottom{
+    position:fixed; left:0; right:0; bottom:0; z-index:30;
+    background:#fff; border-top:1px solid var(--line); display:flex; height:64px;
+  }
+  nav.bottom button{
+    flex:1; font-size:16px; font-weight:700; color:var(--muted);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  }
+  nav.bottom button .ic{font-size:20px; line-height:1;}
+  nav.bottom button.on{color:var(--primary);}
+  nav.bottom button.on .ic{color:var(--primary);}
+
+  /* 页脚署名 */
+  .app-footer{
+    margin:26px 0 4px; padding-top:14px;
+    border-top:1px dashed var(--line);
+    text-align:center; line-height:1.95;
+  }
+  .app-footer .af-main{font-size:13.5px; color:#64748b; letter-spacing:.3px;}
+  .app-footer .af-main b{color:#334155; font-weight:800;}
+
+  /* 选班级首屏：按屏幕自动排布的正方形网格，撑满整屏且一页放下 */
+  .class-gate{
+    position:fixed; inset:0; z-index:60; background:var(--bg);
+    display:none; flex-direction:column; overflow:auto; -webkit-overflow-scrolling:touch;
+    padding:10px 14px 12px;
+  }
+  .class-gate.show{display:flex;}
+  .cg-head{flex:0 0 auto; max-width:1400px; width:100%; margin:0 auto 8px; text-align:center;}
+  .cg-head h2{margin:2px 0 4px; font-size:18px;}
+  .cg-tip{color:var(--muted); font-size:12px; margin:0; line-height:1.6;}
+  #cgGroups{flex:1 1 auto; display:flex; flex-direction:column; gap:7px; min-height:0; width:100%; max-width:1400px; margin:0 auto;}
+  .cg-group{flex:1 1 auto; display:flex; flex-direction:column; min-height:0;
+    background:var(--card); border:1px solid var(--line); border-radius:11px;
+    padding:6px 9px 9px; box-shadow:var(--shadow);}
+  .cg-group h3{flex:0 0 auto; margin:0 0 5px; font-size:13px; color:var(--primary); font-weight:800;}
+  .cg-grid{flex:1 1 auto; display:grid; gap:6px; grid-auto-rows:minmax(38px, 1fr);
+    grid-template-columns:repeat(var(--cg-cols, 10), 1fr);}
+  .cg-btn{display:flex; align-items:center; justify-content:center;
+    border:1.5px solid var(--line); border-radius:9px; background:#fff;
+    font-size:clamp(14px, 1.9vh, 20px); font-weight:700; color:var(--text);
+    line-height:1.2; user-select:none;}
+  .cg-btn:active{border-color:var(--primary); color:var(--primary);}
+  .cg-foot{flex:0 0 auto; max-width:1400px; width:100%; margin:4px auto 0; text-align:center;
+    color:#94a3b8; font-size:11.5px; line-height:1.7;}
+  /* 工具按钮横跨 2 格：「便捷名单转换」这种 6-8 个字的标签，
+     单格宽度放不下会折成两行 */
+  .cg-btn.cg-tool{background:#eff6ff; border-color:#93c5fd; color:var(--primary);
+    font-size:clamp(12px, 1.6vh, 15px); grid-column:span 2; white-space:nowrap;}
+  /* 外链型工具（如果以后要加）：用 <a> 承载，靠浏览器原生行为开新窗口，不受弹窗拦截影响 */
+  a.cg-btn.cg-tool{text-decoration:none; cursor:pointer;}
+  a.cg-btn.cg-tool:hover{border-color:var(--primary);}
+  a.cg-btn.cg-tool:active{border-color:var(--primary); color:var(--primary);}
+
+  /* 设置页里指向「便捷名单转换」的超链接（新窗口打开） */
+  .roster-tool-link{display:inline-flex; align-items:baseline; gap:6px; font-size:15px; font-weight:800;
+    color:var(--primary); text-decoration:none; border:1.5px solid #93c5fd; background:#eff6ff;
+    border-radius:9px; padding:7px 12px; white-space:nowrap; line-height:1.2;}
+  .roster-tool-link:hover{text-decoration:underline; background:#dbeafe;}
+  .roster-tool-link .rtl-sub{font-size:11.5px; font-weight:400; color:var(--muted);}
+  /* 单独打开工具页时，隐藏主界面 */
+  body.standalone-tool header.top, body.standalone-tool main{display:none;}
+
+  /* 便捷名单转换 —— 左右布局：左边 2/3 是各组输入框（4 组一排 × 3 排），右边 1/3 是结果 */
+  .roster-tool{
+    position:fixed; inset:0; z-index:70; background:var(--bg);
+    display:none; flex-direction:column; overflow:auto; -webkit-overflow-scrolling:touch;
+    padding:10px 14px 14px;
+  }
+  .roster-tool.show{display:flex;}
+  .rt-inner{max-width:1900px; width:100%; margin:0 auto;}
+  .rt-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:10px;}
+  .rt-title{font-size:18px; font-weight:800;}
+  .rt-tip{color:var(--muted); font-size:12px; line-height:1.6; margin-top:2px;}
+
+  /* 左右两栏 */
+  .rt-body{display:flex; gap:14px; align-items:flex-start;}
+  .rt-left{flex:0 0 66.6667%; width:66.6667%; min-width:0;}
+  .rt-right{flex:1 1 auto; min-width:0; position:sticky; top:0;}   /* 左边滚动时结果面板不跑 */
+
+  /* 左边：固定 4 组一排、共 3 排；每个框比原来高一倍，方便整组名单一眼看完 */
+  .rt-groups{display:grid; grid-template-columns:repeat(4,1fr); gap:10px;}
+  .rt-g{display:flex; flex-direction:column; background:var(--card);
+    border:1px solid var(--line); border-radius:10px; padding:7px 8px 9px;}
+  .rt-g h4{margin:0 0 6px; font-size:13px; color:var(--primary); font-weight:800;}
+  .rt-g textarea{min-height:420px; resize:vertical; border:1px solid var(--line);
+    border-radius:8px; padding:8px 9px; font-size:15px; font-family:inherit; line-height:1.75; color:var(--text);}
+
+  /* 右边：结果面板 */
+  .rt-out-wrap{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 11px 11px;}
+  .rt-out-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px;}
+  .rt-out-head .rt-title{font-size:15px;}
+  #rtOut{width:100%; height:calc(100vh - 250px); min-height:400px; resize:vertical;
+    border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:15px;
+    font-family:ui-monospace,Consolas,monospace; line-height:1.8; color:var(--text);}
+  .rt-hint{color:var(--muted); font-size:12px; margin-top:8px; line-height:1.6;}
+
+  /* 窄屏（手机 / 小笔记本）：改成上下排列，组降到 2 列 */
+  @media (max-width:900px){
+    .rt-body{flex-direction:column;}
+    .rt-left,.rt-right{flex:1 1 auto; width:100%;}
+    .rt-right{position:static;}
+    .rt-groups{grid-template-columns:repeat(2,1fr);}
+    .rt-g textarea{min-height:220px;}
+    #rtOut{height:260px; min-height:200px;}
+  }
+
+  /* 统计表格 */
+  table.tbl{width:100%; border-collapse:collapse; font-size:15px;}
+  table.tbl th,table.tbl td{padding:9px 8px; text-align:center; border-bottom:1px solid var(--line);}
+  table.tbl th{background:#f8fafc; font-weight:800; position:sticky; top:0;}
+  table.tbl td.name{font-weight:700; text-align:left;}
+  .rate-low{color:var(--danger); font-weight:800;}
+  .badge{display:inline-block; padding:2px 8px; border-radius:6px; font-size:13px; font-weight:700;}
+  .badge.done{background:var(--done-weak); color:var(--done);}
+  .badge.excused{background:var(--excused-weak); color:var(--excused);}
+  .badge.none{background:var(--danger-weak); color:var(--danger);}
+
+  .stat-tabs{display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;}
+  .seg{display:flex; background:#eef1f6; border-radius:11px; padding:4px; gap:4px;}
+  .seg button{padding:9px 16px; border-radius:8px; font-weight:700; font-size:15px; color:var(--muted);}
+  .seg button.on{background:#fff; color:var(--primary); box-shadow:var(--shadow);}
+
+  .record-item{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 6px; border-bottom:1px solid var(--line);}
+  .record-item .rmeta{font-size:15px; flex:1; min-width:0;}
+  .record-item .rmeta .d{color:var(--muted); font-size:13px;}
+  .rec-actions{display:flex; gap:8px; flex:1; max-width:360px;}
+
+  /* 统计页：学生/科目清单卡片 + 二维表 */
+  .stu-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:8px; margin-bottom:14px;}
+  .stu-item{
+    padding:14px 8px; border:2px solid var(--line); border-radius:11px; background:#fff;
+    font-weight:800; font-size:17px; text-align:center; color:var(--text);
+    transition:all .12s ease;
+  }
+  .stu-item:active{transform:scale(.96); background:var(--primary-weak); border-color:var(--primary);}
+  .mk-done{color:var(--done); font-weight:800;}
+  .mk-excused{color:var(--excused);}
+  table.tbl.matrix th,table.tbl.matrix td{font-size:13px; padding:6px 5px; white-space:nowrap;}
+
+  /* 统计页顶部操作条（返回 / 标题 / 视图切换 / 下载） */
+  .stat-bar{display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap;}
+  /* 视图切换用小一号的分段按钮 */
+  .seg.seg-sm{padding:3px; gap:3px;}
+  .seg.seg-sm button{padding:7px 13px; font-size:14px;}
+  /* 未交名单（对应下载 Excel 的第 4 个表） */
+  table.tbl.matrix.miss th.miss-lb,table.tbl.matrix.miss td.miss-lb{
+    text-align:left; font-weight:800; color:var(--muted); background:#f8fafc;
+    position:sticky; left:0; z-index:2; min-width:52px;}
+  table.tbl.matrix.miss th.miss-cnt{color:var(--danger); font-weight:800;}
+  table.tbl.matrix.miss td.miss-name{color:var(--text); font-weight:600;}
+  .miss-num-inline{color:var(--danger); font-size:16px;}
+  .count-pill.miss-pill{color:var(--danger); font-weight:800;}
+  .stat-tabs .seg{flex-wrap:wrap;}
+  table.tbl.matrix th{min-width:52px;}
+
+  /* 表单 */
+  input[type=text],input[type=password],textarea{
+    width:100%; font-family:inherit; font-size:16px; padding:12px; border:2px solid var(--line);
+    border-radius:11px; background:#fff; color:var(--text); -webkit-user-select:text; user-select:text;
+  }
+  select{
+    font-family:inherit; font-size:16px; padding:12px; border:2px solid var(--line);
+    border-radius:11px; background:#fff; color:var(--text); min-width:160px;
+  }
+  input[type=date]{
+    font-family:inherit; font-size:16px; padding:12px; border:2px solid var(--line);
+    border-radius:11px; background:#fff; color:var(--text); min-width:150px;
+  }
+  textarea{min-height:200px; resize:vertical; line-height:1.6;}
+  input:focus,textarea:focus{outline:none; border-color:var(--primary);}
+
+  .modal-mask{position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:50; display:none; align-items:center; justify-content:center; padding:20px;}
+  .modal-mask.show{display:flex;}
+  .modal{background:#fff; border-radius:16px; padding:20px; width:100%; max-width:420px; box-shadow:0 10px 40px rgba(0,0,0,.2);}
+  .modal h3{margin:0 0 14px;}
+  .modal .row{display:flex; gap:10px; margin-top:14px;}
+
+  .toast{
+    position:fixed; left:50%; bottom:150px; transform:translateX(-50%);
+    background:#111827; color:#fff; padding:12px 20px; border-radius:12px; font-size:15px; font-weight:600;
+    z-index:60; opacity:0; pointer-events:none; transition:opacity .2s ease;
+  }
+  .toast.show{opacity:1;}
+
+  .legend{display:flex; gap:12px; flex-wrap:wrap; font-size:14px; color:var(--muted); align-items:center; margin-top:6px;}
+  .legend .dot{display:inline-block; width:14px; height:14px; border-radius:4px; margin-right:4px; vertical-align:-2px;}
+</style>
+</head>
+<body>
+
+<div class="class-gate" id="classGate">
+  <div class="cg-head">
+    <h2>班级作业收交情况记录</h2>
+    <p class="cg-tip">请先点自己班的班号 —— 每个班的数据各自独立保存，互不影响</p>
+  </div>
+  <div id="cgGroups"></div>
+  <div class="cg-foot">进去后右上角有「切换班级」　·　选完可把网址收藏，下次打开免选</div>
+</div>
+
+<!-- 便捷名单转换（从选班页进入，独立一层，不影响原有功能） -->
+<div class="roster-tool" id="rosterTool">
+  <div class="rt-inner">
+    <div class="rt-head">
+      <div>
+        <div class="rt-title">便捷名单转换</div>
+        <div class="rt-tip">左半边把各组姓名填进对应方框（<b>一行一个名字</b>），右半边会自动生成「组号 姓名」的名单，点「复制」即可。
+          十二组是上限，<b>空着的组会自动跳过</b>，几个组都能用。</div>
+      </div>
+      <button class="act-btn" id="rtBack" style="flex:0 0 auto;">返回选班页</button>
+    </div>
+    <div class="rt-body">
+      <div class="rt-left">
+        <div class="rt-groups" id="rtGroups"></div>
+      </div>
+      <div class="rt-right">
+        <div class="rt-out-wrap">
+          <div class="rt-out-head">
+            <div class="rt-title">生成的名单 <span id="rtCount" style="color:var(--muted);font-weight:400;font-size:12px;"></span></div>
+            <div style="display:flex;gap:8px;">
+              <button class="act-btn" id="rtClear">清空</button>
+              <button class="act-btn" id="rtCopy" style="font-weight:800;">复制</button>
+            </div>
+          </div>
+          <textarea id="rtOut" readonly placeholder="在左边输入姓名后，这里会自动生成「组号 姓名」，例如：&#10;1 张三&#10;1 李四&#10;2 王五"></textarea>
+          <div class="rt-hint">复制之后：进自己班 →「设置」→ 输密码 → 找到「学生名单（分组）」→ 粘贴 → 点「应用名单」。
+            名单里已有组号也没关系，会自动去掉重复的组号。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<header class="top">
+  <div class="top-inner">
+    <div>
+      <div class="brand">班级作业记录 · <span class="cls" id="hdrClassName">班级</span></div>
+      <div class="today-label" id="hdrToday"></div>
+    </div>
+    <div class="top-right">
+      <label class="remember-toggle" id="rememberWrap" title="勾选：下次打开网页直接进入本班；取消勾选：每次都先显示选班页">
+        <input type="checkbox" id="rememberClass">
+        <span>下次直接进本班</span>
+      </label>
+      <button class="act-btn" id="switchClassBtn" style="display:none;font-size:14px;padding:8px 12px;">切换班级</button>
+      <div class="save-state" id="modeLabel"></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- ============ 今日录入 ============ -->
+  <section class="view active" id="view-checkin">
+    <div class="card">
+      <div class="picker-row" style="justify-content:space-between;">
+        <div class="date-nav">
+          <button class="arrow" id="prevDay">‹</button>
+          <div class="date-display">
+            <span id="dateText">今天</span>
+            <input type="date" id="dateInput">
+          </div>
+          <button class="arrow" id="nextDay">›</button>
+        </div>
+        <button class="act-btn primary" id="btnToday">回到今天</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="picker-row">
+        <span class="picker-label">科目</span>
+        <div class="chips" id="subjectChips"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="picker-row">
+        <span class="picker-label">作业</span>
+        <div class="chips" id="hwChips"></div>
+      </div>
+    </div>
+
+    <div class="card" id="counterCard" style="display:none;">
+      <div class="counter" id="counterRow"></div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--done)"></span>已交（点1次）</span>
+        <span><span class="dot" style="background:var(--excused)"></span>请假（点2次）</span>
+        <span><span class="dot" style="background:#fff;border:2px solid var(--none-border)"></span>未交（点3次归零）</span>
+      </div>
+    </div>
+
+    <div class="card" id="lockBanner" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <div>
+          <b style="color:var(--danger);">已锁定，不可修改</b>
+          <div class="hint" id="lockHint"></div>
+        </div>
+        <button class="act-btn" id="btnUnlock" style="color:var(--danger);border-color:var(--danger);">老师解锁</button>
+      </div>
+    </div>
+
+    <div class="sticky-actions" id="stickyActions" style="display:none;">
+      <button class="act-btn" id="clearAll">全部清零</button>
+      <button class="act-btn" id="invert">已交/未交互换</button>
+      <span class="save-state" id="saveState">已保存</span>
+    </div>
+
+    <div id="roster"></div>
+  </section>
+
+  <!-- ============ 统计 ============ -->
+  <section class="view" id="view-stats">
+    <div class="card">
+      <h3>统计概览</h3>
+      <div class="counter" id="statsSummary"></div>
+    </div>
+    <div class="card">
+      <div class="stat-tabs">
+        <div class="seg" id="statsTabs">
+          <button data-t="today" class="on">今日</button>
+          <button data-t="week">本周</button>
+          <button data-t="range">自定义日期</button>
+          <button data-t="subject">按科目</button>
+          <button data-t="student">按学生</button>
+        </div>
+      </div>
+      <div id="statsBody" style="overflow-x:auto;"></div>
+    </div>
+  </section>
+
+  <!-- ============ 记录 ============ -->
+  <section class="view" id="view-records">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <div>
+          <h3 style="margin:0;">历史作业记录</h3>
+          <div class="hint">点击「查看」可打开当次名单；「删除」需输入密码（默认 0000）。</div>
+        </div>
+        <button class="act-btn" id="clearAllRecords" style="color:var(--danger);border-color:var(--danger);">删除全部记录</button>
+      </div>
+    </div>
+    <div class="card" id="recordsList"></div>
+  </section>
+
+  <!-- ============ 设置 ============ -->
+  <section class="view" id="view-settings">
+    <div class="card">
+      <h3>班级信息</h3>
+      <div class="picker-row">
+        <span class="picker-label">学校</span>
+        <input type="text" id="setSchoolName" placeholder="例如：某某中学（可留空）">
+      </div>
+      <div class="picker-row">
+        <span class="picker-label">班级</span>
+        <input type="text" id="setClassName" placeholder="例如：高一01班">
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>记录开放时间（免密操作时段）</h3>
+      <div class="hint" style="margin-bottom:8px;">只有在这个时段内、而且是法定工作日，才可以不输密码直接点选。<br>其余时间需要点「老师解锁」输密码才能操作。</div>
+      <div class="row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span>从</span>
+        <select id="setOpenHour"></select>
+        <span>时</span>
+        <select id="setOpenMinute"></select>
+        <span>分</span>
+        <span style="margin:0 4px;">到</span>
+        <select id="setDeadlineHour"></select>
+        <span>时</span>
+        <select id="setDeadlineMinute"></select>
+        <span>分</span>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:15px;cursor:pointer;">
+        <input type="checkbox" id="setWorkdayOnly" style="width:22px;height:22px;">
+        <span>只在法定工作日开放（已含调休；休息日需密码）</span>
+      </label>
+      <div class="row" style="margin-top:10px;">
+        <button class="act-btn primary" id="saveDeadline">保存开放时间</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <h3 style="margin:0;">学生名单（分组）</h3>
+        <a class="roster-tool-link" id="rosterToolLink" href="?tool=roster" target="_blank" rel="noopener"
+           title="在新窗口打开「便捷名单转换」：按组填姓名，自动生成「组号 姓名」，复制后回来粘贴">
+          便捷名单转换 ↗<span class="rtl-sub">新窗口打开</span>
+        </a>
+      </div>
+      <div class="hint" style="margin-bottom:8px;">每行一个学生，格式：<b>组号 姓名</b>（空格或Tab分隔）。只写姓名则默认第1组。当前共 <b id="stuCount">0</b> 人。</div>
+      <textarea id="setRoster" placeholder="1 张三&#10;1 李四&#10;2 王五&#10;3 赵六"></textarea>
+      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+        <button class="act-btn primary" id="applyRoster">应用名单</button>
+        <button class="act-btn" id="loadSample">恢复默认名单</button>
+      </div>
+      <div class="hint" style="margin-top:8px;">名单人多不好打？点右上角「便捷名单转换」，会<b>新开一个页面</b>：
+        把各组姓名一行一个填进去，自动生成上面这种格式，复制回来粘贴即可。</div>
+    </div>
+
+    <div class="card">
+      <h3>科目</h3>
+      <div class="chips" id="subjectManager"></div>
+      <div class="row" style="display:flex;gap:8px;margin-top:10px;">
+        <input type="text" id="newSubject" placeholder="新增科目，如：信息技术">
+        <button class="act-btn" id="addSubject">添加</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>作业项目</h3>
+      <div class="chips" id="hwManager"></div>
+      <div class="row" style="display:flex;gap:8px;margin-top:10px;">
+        <input type="text" id="newHw" placeholder="新增作业，如：周记">
+        <button class="act-btn" id="addHw">添加</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>设置页密码（防止学生误改）</h3>
+      <div class="row" style="display:flex;gap:8px;">
+        <input type="password" id="setPin" placeholder="默认 0000">
+        <button class="act-btn" id="savePin">保存密码</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>数据备份与恢复</h3>
+      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="act-btn" id="exportJson">导出数据(JSON)</button>
+        <button class="act-btn" id="importJson">导入数据(JSON)</button>
+        <button class="act-btn" id="exportFullCsv">导出全部记录(CSV)</button>
+        <button class="act-btn" id="wipeData" style="color:var(--danger);border-color:var(--danger);">清空所有数据</button>
+      </div>
+      <input type="file" id="importFile" accept=".json" style="display:none;">
+    </div>
+
+    <div class="card">
+      <h3>使用说明</h3>
+      <div class="hint" style="line-height:1.9;">
+        <b>① 首次设置：</b>在「设置」里确认学校、班级、名单、科目和作业项目。<br>
+        <b>② 每日记录：</b>点「今日」，选日期→科目→作业，然后点名打勾即可，数据自动保存。<br>
+        <b>③ 状态切换：</b>点1次=已交，点2次=请假，点3次=未交（归零）。<br>
+        <b>④ 截止锁定：</b>每天到「设置」里配置的截止时间（默认 8:00）后，当天数据自动锁定、只可查看；老师可在锁定处输密码临时解锁。<br>
+        <b>⑤ 手机查看：</b>白板和手机都打开同一个线上网址即可随时随地查看，无需教室电脑开机。<br>
+        <b>⑥ 备份：</b>建议每周在「设置」里「导出数据」存一份，防止意外。<br>
+        <b>⑦ 统计查看：</b>「统计」页有 5 个模块 —— <b>今日</b>（今天布置的作业）、<b>本周</b>（本周一至今）、<b>自定义日期</b>（自由选起止）、<b>按科目</b>（点科目看该科历次）、<b>按学生</b>（点姓名，输密码看某个学生）。<br>
+        　每个模块<b>默认显示「未交名单」</b>（每次作业一竖列，往下列出该次没交的人，请假不算没交）；点右上角切换按钮可切到<b>「全部明细」</b>（√ 已交 / 假 请假 / 空白 未交 的二维表）。两种视图都能下载。<br>
+        <b>⑧ 下载格式：</b>下载的 Excel 内含 4 个工作表：<b>已交√</b>（只标 √ 与 假）、<b>未交×</b>（只标 × 与 假）、<b>全部√×假</b>（三种全标）、<b>未交名单</b>（每次作业一竖列，往下依次列出该次未交学生；请假不计入未交）。<br>
+        <b>⑨ 删除记录：</b>「记录」页每条记录可输密码删除，也可一键「删除全部记录」。
+      </div>
+    </div>
+  </section>
+
+  <footer class="app-footer">
+    <div class="af-main">本工具由 <b>🐒🐘🍄</b> 开发 · 联系与交流：<a href="mailto:457793307@qq.com" style="color:inherit">457793307@qq.com</a></div>
+  </footer>
+</main>
+
+<nav class="bottom">
+  <button data-view="checkin" class="on"><span class="ic">◉</span>今日</button>
+  <button data-view="stats"><span class="ic">▤</span>统计</button>
+  <button data-view="records"><span class="ic">☰</span>记录</button>
+  <button data-view="settings"><span class="ic">⚙</span>设置</button>
+</nav>
+
+<div class="modal-mask" id="pinMask">
+  <div class="modal">
+    <h3>请输入密码</h3>
+    <input type="password" id="pinInput" placeholder="默认 0000">
+    <div class="row">
+      <button class="act-btn" id="pinCancel">取消</button>
+      <button class="act-btn primary" id="pinOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= 常量与默认数据 ================= */
+
+/* ===== 班级清单（一套系统管多个班，各班数据互不影响） =====
+   要增删班级，改下面几行即可。
+   班号会直接显示在选班按钮上，同时是数据存储键名的一部分
+   （hw_checkin_data_v4_<班号>）——改了班号等于换一份数据，注意。 */
+function seqClass(prefix, n){ const a=[]; for(let i=1;i<=n;i++) a.push(prefix + String(i).padStart(2,'0')); return a; }
+const CLASS_GROUPS = [
+  { name:'高一', classes: seqClass('高一', 3) },   // 高一01 – 高一03
+  { name:'高二', classes: seqClass('高二', 3) },   // 高二01 – 高二03
+  { name:'高三', classes: seqClass('高三', 3) },   // 高三01 – 高三03
+  { name:'测试班（随便试，不影响真实班级）', classes: ['测试'], minor:true,
+    tools:[
+      { id:'roster', label:'便捷名单转换' }                                          // 页内遮罩
+    ] }   // 排在最后
+];
+/* 不在选班页显示、但允许用直链 ?c= 进入的班（目前为空，保留这个口子备用） */
+const HIDDEN_CLASSES = [];
+const VISIBLE_CLASSES = CLASS_GROUPS.reduce((a,g)=> a.concat(g.classes), []);
+const ALL_CLASSES = VISIBLE_CLASSES.concat(HIDDEN_CLASSES);
+
+/* ---- 是否"记住本班"（页头上那个勾选框，默认勾选） ---- */
+const REMEMBER_KEY = 'hw_remember_class';
+let REMEMBER_CLASS = (function(){
+  try{ return localStorage.getItem(REMEMBER_KEY) !== '0'; }catch(e){ return true; }
+})();
+
+/* 当前班级怎么定：
+   ① 网址带 ?c=xxxx（老师收藏的直链）——勾选"记住本班"时直接进；取消勾选时，
+      只有当这个标签页已经进过本班（刚选完/刚刷新）才继续进，否则先回到选班页；
+   ② 网址没带班级号 → 勾选则进"上次待过的班"，取消勾选则一律显示选班页。 */
+let CURRENT_CLASS = (function(){
+  const q = (function(){ try{ return new URLSearchParams(location.search).get('c'); }catch(e){ return null; } })();
+  const entered = (function(){ try{ return sessionStorage.getItem('hw_entered'); }catch(e){ return null; } })();
+  try{
+    if(q && ALL_CLASSES.indexOf(q) >= 0){
+      if(REMEMBER_CLASS || entered === q) return q;
+      return null;                                   // 取消勾选且是新打开 → 先选班
+    }
+    if(!REMEMBER_CLASS) return null;                 // 取消勾选 → 一律先选班
+    const s = localStorage.getItem('hw_current_class');
+    if(s && VISIBLE_CLASSES.indexOf(s) >= 0) return s;
+  }catch(e){}
+  return null;
+})();
+
+const KEY = 'hw_checkin_data_v4_' + (CURRENT_CLASS || 'none');
+const DATA_VERSION = 4;
+const STATUS = { none:'none', done:'done', excused:'excused' };
+const STATUS_LABEL = { none:'未交', done:'已交', excused:'请假' };
+
+/* ===== 法定节假日与调休 =====
+   数据来源：国务院办公厅《关于2026年部分节假日安排的通知》（2025-11-04）。
+   新一年安排公布后，把新一年的日期补进下面两个表即可。
+   表内没有的日期，按「周一至周五为工作日、周六日为休息日」处理。 */
+const LEGAL_HOLIDAYS = new Set([
+  '2026-01-01','2026-01-02','2026-01-03',
+  '2026-02-15','2026-02-16','2026-02-17','2026-02-18','2026-02-19','2026-02-20','2026-02-21','2026-02-22','2026-02-23',
+  '2026-04-04','2026-04-05','2026-04-06',
+  '2026-05-01','2026-05-02','2026-05-03','2026-05-04','2026-05-05',
+  '2026-06-19','2026-06-20','2026-06-21',
+  '2026-09-25','2026-09-26','2026-09-27',
+  '2026-10-01','2026-10-02','2026-10-03','2026-10-04','2026-10-05','2026-10-06','2026-10-07'
+]);
+const LEGAL_WORKDAYS = new Set([
+  '2026-01-04',
+  '2026-02-14','2026-02-28',
+  '2026-05-09',
+  '2026-09-20','2026-10-10'
+]);
+
+function isWorkday(dateStr){
+  if(LEGAL_WORKDAYS.has(dateStr)) return true;
+  if(LEGAL_HOLIDAYS.has(dateStr)) return false;
+  const w = new Date(dateStr+'T00:00:00').getDay();
+  return w>=1 && w<=5;
+}
+function weekdayCN(dateStr){
+  const w = new Date(dateStr+'T00:00:00').getDay();
+  return '星期'+['日','一','二','三','四','五','六'][w];
+}
+
+function defaultSubjects(){ return ['语文','数学','英语','物理','化学','地理']; }
+function defaultHw(){ return ['大本','小本','练习册①','练习册②','试卷①','试卷②','听默写','背诵','错题本']; }
+
+function defaultStudents(){
+  // 每个班初始名单为空：到「设置 → 学生名单（分组）」按「组号 姓名」逐行粘贴。
+  // 新班第一次打开时会调用下面的 makeDemoRoster() 给一份示例名单，方便直接看到效果。
+  return [];
+}
+
+/* ===== 示例名单（仅用于新班第一次打开时占位，姓名全部虚构，不对应任何真实学生） =====
+   每一组都是常见字组合，跟着班号变，所以 9 个班的名字各不相同。
+   想换成自己班：设置 → 学生名单（分组），粘贴自己的名单覆盖掉即可。 */
+const DEMO_SURNAME = ['张','李','王','刘','陈','杨','赵','黄','周','吴','徐','孙','马','朱','胡','高'];
+const DEMO_GIVEN = ['子墨','嘉怡','宇航','思远','雨桐','浩然','欣怡','明轩','若曦','泽宇','诗涵','天佑',
+                    '佳琪','俊杰','晨曦','梦洁','文博','雅雯','振宇','静怡','一鸣','梓涵','皓轩','婉清'];
+function makeDemoRoster(cls){
+  const key = String(cls || 'demo');
+  /* FNV-1a 哈希：如果只用字符码简单累加，不同班号算出的种子会相差 16 的倍数，
+     取模后撞在一起，导致好几个班拿到一模一样的名单。换成 FNV-1a 后分布均匀。 */
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  const next = n => { h = (Math.imul(h ^ (h >>> 15), 2246822507) + 1) >>> 0; return h % n; };
+  const out = [], used = new Set();
+  const PER_GROUP = 4, GROUPS = 3;                 // 12 人 / 3 组 / 每组 4 人
+  for (let i = 0; i < PER_GROUP * GROUPS; i++) {
+    let name, guard = 0;
+    do {
+      name = DEMO_SURNAME[next(DEMO_SURNAME.length)] + DEMO_GIVEN[next(DEMO_GIVEN.length)];
+    } while (used.has(name) && guard++ < 200);     // 同班内去重
+    used.add(name);
+    out.push({ id: 's' + (i + 1), name: name, group: Math.floor(i / PER_GROUP) + 1 });
+  }
+  return out;
+}
+
+function defaultData(){
+  return {
+    version:DATA_VERSION,
+    settings:{ schoolName:'', className:(CURRENT_CLASS || '') + '班', pin:'0000', openFrom:{hour:6, minute:0}, deadline:{hour:8, minute:0}, workdayOnly:true, subjects:defaultSubjects(), homeworkTypes:defaultHw(), students:defaultStudents() },
+    records:[]
+  };
+}
+
+/* ================= 数据层 ================= */
+let DATA = null;
+let MODE = 'local';   // 本版本只有 local：数据全部存在浏览器本地
+let saveTimer = null;
+let savePending = false;
+
+function loadLocal(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(raw){ const d = JSON.parse(raw); if(d && d.settings && d.records) return d; }
+  }catch(e){}
+  return defaultData();
+}
+function normalize(d){
+  if(!d || !d.settings || !d.records) return defaultData();
+  if(d.version !== DATA_VERSION) return defaultData(); // 版本升级，重置为最新默认配置
+  const def = defaultData();
+  d.settings = Object.assign({}, def.settings, d.settings);
+  d.settings.subjects = d.settings.subjects && d.settings.subjects.length ? d.settings.subjects : def.settings.subjects;
+  d.settings.homeworkTypes = d.settings.homeworkTypes && d.settings.homeworkTypes.length ? d.settings.homeworkTypes : def.settings.homeworkTypes;
+  d.settings.students = Array.isArray(d.settings.students) && d.settings.students.length ? d.settings.students : def.settings.students;
+  d.records = Array.isArray(d.records) ? d.records : [];
+  return d;
+}
+
+/* 纯本地模式：不连接任何服务器，数据只保存在浏览器本地。
+   页面里没有任何后端地址、没有向外的数据提交、也没有可被枚举的数据端点。 */
+async function initData(){
+  MODE = 'local';
+  let local = null;
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(raw){ const d = JSON.parse(raw); if(d && d.settings && d.records) local = d; }
+  }catch(e){}
+  if(local){
+    DATA = normalize(local);
+  } else {
+    /* 这个班第一次打开：给一份虚构的示例名单，先看到界面是什么样。
+       只注入这一次，之后一切以你自己的数据为准（删空了也不会自动补回来）。 */
+    DATA = normalize(defaultData());
+    DATA.settings.students = makeDemoRoster(CURRENT_CLASS);
+    try{ localStorage.setItem(KEY, JSON.stringify(DATA)); }catch(e){}
+  }
+}
+
+function persist(){
+  savePending = false;
+  try{ localStorage.setItem(KEY, JSON.stringify(DATA)); }catch(e){}
+  setSaveState('已保存');
+}
+function save(){
+  setSaveState('保存中…');
+  if(saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(persist, 350);
+}
+function flushNow(){ if(saveTimer) clearTimeout(saveTimer); persist(); }
+
+function setSaveState(t){
+  const el = document.getElementById('saveState'); if(el) el.textContent = t;
+}
+
+/* ================= 状态 / UI 辅助 ================= */
+let curDate = todayStr();
+let curSubject = null;
+let curHomework = null;
+let activeView = 'checkin';
+let unlocked = false;   // 老师用密码解锁编辑（本次会话内生效，刷新后重新锁定）
+
+function todayStr(){
+  const d = new Date();
+  const p = n => String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+function fmtDateCN(s){
+  if(s === todayStr()) return '今天';
+  const [y,m,d] = s.split('-').map(Number);
+  return m+'月'+d+'日';
+}
+function todayCN(){
+  const d = new Date();
+  const w = ['日','一','二','三','四','五','六'][d.getDay()];
+  return d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日 · 星期'+w;
+}
+function deadline(){
+  const d = (DATA && DATA.settings && DATA.settings.deadline) || {hour:8, minute:0};
+  return d;
+}
+function openFrom(){
+  const d = (DATA && DATA.settings && DATA.settings.openFrom) || {hour:6, minute:0};
+  return d;
+}
+function workdayOnly(){
+  return !(DATA && DATA.settings && DATA.settings.workdayOnly === false);
+}
+function toMins(t){ return t.hour*60 + t.minute; }
+function fmtHM(t){
+  const p = n => String(n).padStart(2,'0');
+  return p(t.hour)+':'+p(t.minute);
+}
+function fmtDeadline(){ return fmtHM(deadline()); }
+function fmtOpen(){ return fmtHM(openFrom()); }
+function nowMins(){ const n = new Date(); return n.getHours()*60 + n.getMinutes(); }
+
+/* 免密可操作：仅当天，且在开放时段内；开启工作日限制时还必须是法定工作日 */
+function isEditable(dateStr){
+  if(unlocked) return true;                                  // 老师解锁后随时可改
+  if(dateStr !== todayStr()) return false;                   // 仅当天可编辑
+  if(workdayOnly() && !isWorkday(dateStr)) return false;     // 休息日需密码
+  const m = nowMins();
+  return m >= toMins(openFrom()) && m < toMins(deadline());   // 只在开放时段内
+}
+function lockReason(dateStr){
+  if(dateStr < todayStr()) return '这是历史日期，数据已截止，只可查看。';
+  if(dateStr > todayStr()) return '这是未来日期，暂不能编辑。';
+  if(workdayOnly() && !isWorkday(dateStr)){
+    return '今天是休息日（'+todayCN()+'），不是法定工作日，需输入密码才能操作。';
+  }
+  if(nowMins() < toMins(openFrom())){
+    return '免密操作时间是 '+fmtOpen()+' 到 '+fmtDeadline()+'，现在还没到开始时间，需输入密码才能操作。';
+  }
+  return '已过今日 '+fmtDeadline()+' 截止时间，本日数据已锁定，只可查看。';
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h);
+  t._h = setTimeout(()=> t.classList.remove('show'), 1800);
+}
+
+/* ================= 记录操作 ================= */
+function recKey(date,subject,hw){ return date+'|'+subject+'|'+hw; }
+function findRecord(date,subject,hw){
+  return DATA.records.find(r => r.date===date && r.subject===subject && r.hw===hw);
+}
+function getOrCreateRecord(){
+  let r = findRecord(curDate,curSubject,curHomework);
+  if(!r){
+    r = { id:'r'+Date.now()+Math.random().toString(36).slice(2,6), date:curDate, subject:curSubject, hw:curHomework, note:'', createdAt:Date.now(), subs:{} };
+    DATA.records.push(r);
+  }
+  return r;
+}
+function statusOf(rec, sid){ return rec.subs[sid] || STATUS.none; }
+function setStatus(rec, sid, st){
+  if(st === STATUS.none) delete rec.subs[sid];
+  else rec.subs[sid] = st;
+}
+function cycleStatus(cur){
+  const order = [STATUS.none, STATUS.done, STATUS.excused];
+  const i = order.indexOf(cur);
+  return order[(i+1)%order.length];
+}
+
+/* ================= 渲染：今日录入 ================= */
+function renderCheckin(){
+  document.getElementById('dateText').textContent = fmtDateCN(curDate);
+  document.getElementById('dateInput').value = curDate;
+  document.getElementById('hdrToday').textContent = todayCN();
+  document.getElementById('hdrClassName').textContent = (DATA.settings.schoolName ? DATA.settings.schoolName + ' · ' : '') + DATA.settings.className;
+
+  // 科目 chips
+  const sc = document.getElementById('subjectChips');
+  sc.innerHTML = '';
+  DATA.settings.subjects.forEach(s=>{
+    const b = document.createElement('button');
+    b.className = 'chip' + (s===curSubject?' on':'');
+    b.textContent = s;
+    b.onclick = ()=>{ curSubject = s; renderCheckin(); };
+    sc.appendChild(b);
+  });
+  // 作业 chips
+  const hc = document.getElementById('hwChips');
+  hc.innerHTML = '';
+  DATA.settings.homeworkTypes.forEach(h=>{
+    const b = document.createElement('button');
+    b.className = 'chip' + (h===curHomework?' on':'');
+    b.textContent = h;
+    b.onclick = ()=>{ curHomework = h; renderCheckin(); };
+    hc.appendChild(b);
+  });
+
+  const ready = curSubject && curHomework;
+  const editable = isEditable(curDate);
+  document.getElementById('counterCard').style.display = ready ? 'block' : 'none';
+  document.getElementById('stickyActions').style.display = (ready && editable) ? 'flex' : 'none';
+
+  // 锁定提示
+  const lockBanner = document.getElementById('lockBanner');
+  lockBanner.style.display = (ready && !editable) ? 'block' : 'none';
+  if(ready && !editable) document.getElementById('lockHint').textContent = lockReason(curDate);
+
+  // 名单
+  const roster = document.getElementById('roster');
+  roster.innerHTML = '';
+
+  // 空白名单时的引导（本班还没录名单）
+  if(DATA.settings.students.length === 0){
+    const hint = document.createElement('div');
+    hint.className = 'card hint';
+    hint.style.textAlign = 'center';
+    hint.style.padding = '30px';
+    hint.innerHTML = '还没有学生名单。<br>请到「设置」→「学生名单（分组）」里粘贴名单，每行<b>组号 姓名</b>，例如：1 张三';
+    roster.appendChild(hint);
+    renderCounter(null);
+    return;
+  }
+
+  if(!ready){
+    const hint = document.createElement('div');
+    hint.className = 'card hint';
+    hint.style.textAlign = 'center';
+    hint.style.padding = '30px';
+    hint.textContent = '请先在上面点选「科目」和「作业」，名单就会出现在这里。';
+    roster.appendChild(hint);
+    renderCounter(null);
+    return;
+  }
+
+  const rec = findRecord(curDate,curSubject,curHomework);
+
+  // 按组分组
+  const groups = {};
+  DATA.settings.students.forEach(s=>{ (groups[s.group] = groups[s.group] || []).push(s); });
+  const groupNums = Object.keys(groups).map(Number).sort((a,b)=>a-b);
+
+  groupNums.forEach(g=>{
+    const block = document.createElement('div');
+    block.className = 'group-block';
+    const head = document.createElement('div');
+    head.className = 'group-head';
+    let done=0, excused=0, total = groups[g].length;
+    groups[g].forEach(s=>{ const st = rec?statusOf(rec,s.id):STATUS.none; if(st===STATUS.done)done++; else if(st===STATUS.excused)excused++; });
+    head.innerHTML = '<span class="gname">第 '+g+' 组</span><span class="gstat">已交 '+done+' / '+total+'</span>';
+    block.appendChild(head);
+
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+    groups[g].forEach(s=>{
+      const st = rec?statusOf(rec,s.id):STATUS.none;
+      const t = document.createElement('div');
+      t.className = 'stu ' + st;
+      t.innerHTML = '<span class="nm">'+esc(s.name)+'</span><span class="st">'+STATUS_LABEL[st]+'</span>';
+      if(editable){
+        t.onclick = ()=>{
+          const r = getOrCreateRecord();
+          setStatus(r, s.id, cycleStatus(statusOf(r,s.id)));
+          save(); renderCheckin();
+        };
+      } else {
+        t.style.cursor = 'default';
+      }
+      grid.appendChild(t);
+    });
+    block.appendChild(grid);
+    roster.appendChild(block);
+  });
+
+  renderCounter(rec);
+}
+
+function renderCounter(rec){
+  const row = document.getElementById('counterRow');
+  if(!rec){ row.innerHTML = ''; return; }
+  let done=0,excused=0,total=DATA.settings.students.length;
+  DATA.settings.students.forEach(s=>{ const st=statusOf(rec,s.id); if(st===STATUS.done)done++; else if(st===STATUS.excused)excused++; });
+  const none = total-done-excused;
+  row.innerHTML =
+    '<span class="count-pill done">已交<b>'+done+'</b></span>'+
+    '<span class="count-pill excused">请假<b>'+excused+'</b></span>'+
+    '<span class="count-pill none">未交<b>'+none+'</b></span>'+
+    '<span class="count-pill">总人数<b>'+total+'</b></span>';
+}
+
+/* ================= 渲染：统计 ================= */
+function computeStudentStats(){
+  const map = {};
+  DATA.settings.students.forEach(s=>{ map[s.id] = { name:s.name, group:s.group, total:0, done:0, excused:0 }; });
+  DATA.records.forEach(r=>{
+    DATA.settings.students.forEach(s=>{
+      const st = statusOf(r,s.id);
+      map[s.id].total++;
+      if(st===STATUS.done) map[s.id].done++;
+      else if(st===STATUS.excused) map[s.id].excused++;
+    });
+  });
+  return Object.values(map);
+}
+function rateOf(item){
+  const due = item.total - item.excused;
+  return due>0 ? Math.round(item.done/due*1000)/10 : 0;
+}
+
+/* 状态显示符号：已交 √、请假 假、未交 空白 */
+function markOf(st){ return st===STATUS.done ? '√' : (st===STATUS.excused ? '假' : ''); }
+function markClass(st){ return st===STATUS.done ? 'mk-done' : (st===STATUS.excused ? 'mk-excused' : ''); }
+
+let statsTab = 'today';
+let statsView = 'miss';       // 每个模块默认显示「未交名单」；'matrix' = 全部明细（√×矩阵）
+let studentView = 'miss';     // 「按学生」子视图：'miss' 该生未交清单 / 'detail' 逐次明细
+let pendingStudentId = null;   // 待查看详情的学生 id（需密码）
+let currentStudentId = null;   // 当前查看详情的学生 id（供下载）
+let currentMatrix = null;      // 当前二维表 { title, cols:[{date,subject,hw,rec}], filename }
+
+function renderStats(){
+  const sum = document.getElementById('statsSummary');
+  const recN = DATA.records.length;
+  let totalDone=0,totalExcused=0,totalAll=0;
+  const sts = computeStudentStats();
+  sts.forEach(s=>{ totalDone+=s.done; totalExcused+=s.excused; totalAll+=s.total; });
+  const due = totalAll-totalExcused;
+  const overall = due>0 ? Math.round(totalDone/due*1000)/10 : 0;
+  sum.innerHTML =
+    '<span class="count-pill">作业次数<b>'+recN+'</b></span>'+
+    '<span class="count-pill done">已交人次<b>'+totalDone+'</b></span>'+
+    '<span class="count-pill excused">请假<b>'+totalExcused+'</b></span>'+
+    '<span class="count-pill">整体上交率<b>'+overall+'%</b></span>';
+
+  const body = document.getElementById('statsBody');
+  if(statsTab==='today') renderTodayMatrix(body);
+  else if(statsTab==='week') renderWeekMatrix(body);
+  else if(statsTab==='range') renderRangeMatrix(body);
+  else if(statsTab==='subject') renderSubjectList(body);
+  else renderStudentList(body);
+}
+
+/* 按学生：分组名单，点击需密码查看详情 */
+function renderStudentList(body){
+  const groups = {};
+  DATA.settings.students.forEach(s=>{ (groups[s.group]=groups[s.group]||[]).push(s); });
+  const nums = Object.keys(groups).map(Number).sort((a,b)=>a-b);
+  if(!DATA.settings.students.length){
+    body.innerHTML = '<div class="hint" style="text-align:center;padding:26px;">还没有学生名单，请到「设置」→「学生名单（分组）」里添加。</div>';
+    return;
+  }
+  let html = '<div class="hint" style="margin-bottom:10px;">点击学生姓名，可查看其历次作业上交情况与上交率（需输入密码）。</div>';
+  nums.forEach(g=>{
+    html += '<div class="group-head"><span class="gname">第 '+g+' 组</span><span class="gstat">'+groups[g].length+' 人</span></div>';
+    html += '<div class="stu-grid">';
+    groups[g].forEach(s=>{
+      html += '<button class="stu-item" onclick="askStudentDetail(\''+escJs(s.id)+'\')">'+esc(s.name)+'</button>';
+    });
+    html += '</div>';
+  });
+  body.innerHTML = html;
+}
+function askStudentDetail(id){ pendingStudentId = id; pinMode = 'student'; showPinModal(); }
+function showStudentDetail(id){
+  const s = DATA.settings.students.find(x=>x.id===id); if(!s) return;
+  currentStudentId = id;
+  const recs = DATA.records.slice().sort((a,b)=>(b.date+b.subject+b.hw).localeCompare(a.date+a.subject+a.hw));
+  let done=0, excused=0, total=0, miss=0, rows='';
+  const missRecs = [];
+  recs.forEach(r=>{
+    const st = statusOf(r,s.id); total++;
+    if(st===STATUS.done) done++;
+    else if(st===STATUS.excused) excused++;
+    else { miss++; missRecs.push(r); }
+    rows += '<tr><td>'+r.date+'</td><td>'+esc(r.subject)+'</td><td>'+esc(r.hw)+'</td><td class="'+markClass(st)+'">'+markOf(st)+'</td></tr>';
+  });
+  const rate = rateOf({total:total, done:done, excused:excused});
+  const body = document.getElementById('statsBody');
+  let html = '<div class="stat-bar">'+
+    '<button class="act-btn" onclick="renderStats()">← 返回</button>'+
+    '<b style="font-size:18px;">'+esc(s.name)+'</b>'+
+    '<span class="count-pill">第 '+s.group+' 组</span>'+
+    '<div class="seg seg-sm">'+
+      '<button class="'+(studentView==='miss'?'on':'')+'" onclick="setStudentView(\'miss\')">未交清单</button>'+
+      '<button class="'+(studentView==='detail'?'on':'')+'" onclick="setStudentView(\'detail\')">逐次明细</button>'+
+    '</div>'+
+    '<button class="act-btn primary" onclick="downloadStudent()">下载</button>'+
+    '</div>';
+  html += '<div class="counter" style="margin-bottom:12px;">'+
+    '<span class="count-pill">作业 <b>'+total+'</b> 次</span>'+
+    '<span class="count-pill done">已交 <b>'+done+'</b></span>'+
+    '<span class="count-pill excused">请假 <b>'+excused+'</b></span>'+
+    '<span class="count-pill'+(miss?' miss-pill':'')+'">未交 <b>'+miss+'</b></span>'+
+    '<span class="count-pill">上交率 <b>'+rate+'%</b></span>'+
+    '</div>';
+
+  if(!recs.length){
+    html += '<div class="hint" style="text-align:center;padding:20px;">还没有任何作业记录。</div>';
+  } else if(studentView === 'miss'){
+    /* 默认视图：只看这个学生「哪几次没交」 */
+    if(!missRecs.length){
+      html += '<div class="hint" style="text-align:center;padding:24px;color:var(--done);font-weight:800;">'+
+        '全部 '+total+' 次都交了（请假另计）✓</div>';
+    } else {
+      html += '<div class="hint" style="margin-bottom:10px;">共 <b class="miss-num-inline">'+missRecs.length+'</b> 次未交（请假不算未交，共 '+excused+' 次）：</div>';
+      html += '<table class="tbl"><tr><th style="width:60px;">#</th><th>日期</th><th>科目</th><th>作业</th></tr>';
+      missRecs.forEach((r,i)=>{
+        html += '<tr><td>'+(i+1)+'</td><td>'+r.date+'</td><td>'+esc(r.subject)+'</td><td>'+esc(r.hw)+'</td></tr>';
+      });
+      html += '</table>';
+    }
+  } else {
+    html += '<table class="tbl"><tr><th>日期</th><th>科目</th><th>作业</th><th>状态</th></tr>'+rows+'</table>';
+  }
+  body.innerHTML = html;
+}
+function setStudentView(v){
+  studentView = v;
+  showStudentDetail(currentStudentId);
+}
+
+/* 按科目：科目名单，点击查看二维表（可下载，不需密码） */
+function renderSubjectList(body){
+  let html = '<div class="hint" style="margin-bottom:10px;">点击科目，查看该科目全班历次作业上交情况（二维表，可下载）。</div><div class="stu-grid">';
+  DATA.settings.subjects.forEach(sub=>{
+    html += '<button class="stu-item" onclick="showSubjectMatrix(\''+escJs(sub)+'\')">'+esc(sub)+'</button>';
+  });
+  html += '</div>';
+  body.innerHTML = html;
+}
+function showSubjectMatrix(subject){
+  const recs = DATA.records.filter(r=>r.subject===subject).sort((a,b)=>(a.date+a.hw).localeCompare(b.date+b.hw));
+  const body = document.getElementById('statsBody');
+  if(!recs.length){
+    body.innerHTML = '<div style="margin-bottom:12px;"><button class="act-btn" onclick="renderStats()">← 返回</button></div><div class="hint" style="text-align:center;padding:20px;">「'+esc(subject)+'」还没有任何作业记录。</div>';
+    return;
+  }
+  renderMatrixView(subject, recs.map(r=>({ date:r.date, subject:r.subject, hw:r.hw, rec:r })), '作业上交矩阵-'+subject+'.xls');
+}
+
+/* 今日：今天的所有作业 */
+function renderTodayMatrix(body){
+  const t = todayStr();
+  const recs = DATA.records.filter(r=> r.date === t)
+    .sort((a,b)=> (a.subject+a.hw).localeCompare(b.subject+b.hw));
+  if(!recs.length){
+    body.innerHTML = '<div class="hint" style="text-align:center;padding:20px;">今天（'+fmtDateCN(t)+'）还没有布置作业记录。</div>';
+    return;
+  }
+  renderMatrixView('今日作业（'+fmtDateCN(t)+'）', recs.map(r=>({ date:r.date, subject:r.subject, hw:r.hw, rec:r })), '今日作业上交.xls');
+}
+
+/* 本周：本周一至今的历次作业二维表 */
+function weekStartStr(){
+  const d = new Date(todayStr()+'T00:00:00');
+  const day = d.getDay();
+  const diff = (day===0 ? 6 : day-1);
+  d.setDate(d.getDate()-diff);
+  const p = n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+function renderWeekMatrix(body){
+  const ws = weekStartStr();
+  const recs = DATA.records.filter(r=> r.date>=ws && r.date<=todayStr()).sort((a,b)=>(a.date+a.subject+a.hw).localeCompare(b.date+b.subject+b.hw));
+  if(!recs.length){
+    body.innerHTML = '<div class="hint" style="text-align:center;padding:20px;">本周（'+fmtDateCN(ws)+' 至今）还没有作业记录。</div>';
+    return;
+  }
+  renderMatrixView('本周作业（'+fmtDateCN(ws)+' 至今）', recs.map(r=>({ date:r.date, subject:r.subject, hw:r.hw, rec:r })), '本周作业上交矩阵.xls');
+}
+
+/* 自定义日期区间：自由选择起止日期 */
+function renderRangeMatrix(body){
+  const ws = weekStartStr();
+  let html = '<div class="hint" style="margin-bottom:10px;">选择起止日期，查看该区间内历次作业上交情况（二维表，可下载）。</div>';
+  html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">'+
+    '<input type="date" id="rangeStart" value="'+ws+'">'+
+    '<span>至</span>'+
+    '<input type="date" id="rangeEnd" value="'+todayStr()+'">'+
+    '<button class="act-btn primary" onclick="applyRange()">查看</button>'+
+    '</div>';
+  body.innerHTML = html;
+}
+function applyRange(){
+  const s = document.getElementById('rangeStart').value;
+  const e = document.getElementById('rangeEnd').value;
+  if(!s || !e){ toast('请选择起止日期'); return; }
+  if(s > e){ toast('起始日期不能晚于结束日期'); return; }
+  const recs = DATA.records.filter(r=> r.date>=s && r.date<=e).sort((a,b)=>(a.date+a.subject+a.hw).localeCompare(b.date+b.subject+b.hw));
+  const body = document.getElementById('statsBody');
+  if(!recs.length){
+    body.innerHTML = '<div style="margin-bottom:12px;"><button class="act-btn" onclick="renderStats()">← 返回</button></div><div class="hint" style="text-align:center;padding:20px;">该区间内还没有作业记录。</div>';
+    return;
+  }
+  renderMatrixView(s+' 至 '+e+' 作业', recs.map(r=>({ date:r.date, subject:r.subject, hw:r.hw, rec:r })), '作业上交矩阵-'+s+'至'+e+'.xls');
+}
+
+/* ===== 通用二维表 =====
+   每个模块都有两个视图：
+     · 默认「未交名单」——和下载 Excel 的第 4 个表同一种排法（每次作业一竖列，往下罗列未交学生）
+     · 切到「全部明细」——和原来一样，√ / 假 / 空白 的二维矩阵（即 Excel 第 1 个表）
+   下载不受影响，始终是那 4 个表。 */
+function statsViewSwitch(){
+  return '<div class="seg seg-sm">'+
+    '<button class="'+(statsView==='miss'?'on':'')+'" onclick="setStatsView(\'miss\')">未交名单</button>'+
+    '<button class="'+(statsView==='matrix'?'on':'')+'" onclick="setStatsView(\'matrix\')">全部明细</button>'+
+    '</div>';
+}
+function setStatsView(v){
+  if(!currentMatrix) return;
+  statsView = v;
+  renderMatrixView(currentMatrix.title, currentMatrix.cols, currentMatrix.filename);
+}
+function matrixHeader(title, filename){
+  return '<div class="stat-bar">'+
+    '<button class="act-btn" onclick="renderStats()">← 返回</button>'+
+    '<b style="font-size:18px;">'+esc(title)+'</b>'+
+    statsViewSwitch()+
+    '<button class="act-btn primary" onclick="downloadMatrix()">下载</button>'+
+    '</div>';
+}
+function renderMatrixView(title, cols, filename){
+  currentMatrix = { title:title, cols:cols, filename:filename };
+  if(statsView === 'miss') renderMissTable(title, cols, filename);
+  else renderFullMatrix(title, cols, filename);
+}
+
+/* 未交名单：与导出 Excel 的第 4 个表一致 —— 第一列是标签（日期/科目/项目），每次作业占一竖列 */
+function renderMissTable(title, cols, filename){
+  const students = DATA.settings.students.slice()
+    .sort((a,b)=> (a.group - b.group) || (idNum(a) - idNum(b)));
+  const missByCol = cols.map(c=> students.filter(s=> statusOf(c.rec, s.id) === STATUS.none).map(s=> s.name));
+  const maxN = missByCol.reduce((m,a)=> Math.max(m, a.length), 0);
+  const totalMiss = missByCol.reduce((s,a)=> s + a.length, 0);
+
+  let html = matrixHeader(title, filename);
+  if(!students.length){
+    html += '<div class="hint" style="text-align:center;padding:24px;">还没有学生名单，请先到「设置」→「学生名单（分组）」里录入。</div>';
+  } else if(!maxN){
+    html += '<div class="hint" style="text-align:center;padding:24px;color:var(--done);font-weight:800;">'+
+      '这 '+cols.length+' 次作业全部交齐 ✓</div>';
+  } else {
+    html += '<div class="hint" style="margin-bottom:10px;">共 <b>'+cols.length+'</b> 次作业 · 合计未交 '+
+      '<b class="miss-num-inline">'+totalMiss+'</b> 人次（<b>请假不计入未交</b>）</div>';
+    html += '<table class="tbl matrix miss">';
+    html += '<tr><th class="miss-lb">日期</th>' + cols.map(c=>'<th>'+c.date+'</th>').join('') + '</tr>';
+    html += '<tr><th class="miss-lb">科目</th>' + cols.map(c=>'<th>'+esc(c.subject)+'</th>').join('') + '</tr>';
+    html += '<tr><th class="miss-lb">项目</th>' + cols.map(c=>'<th>'+esc(c.hw)+'</th>').join('') + '</tr>';
+    html += '<tr><th class="miss-lb">未交</th>' + missByCol.map(a=>'<th class="miss-cnt">'+a.length+' 人</th>').join('') + '</tr>';
+    for(let i=0;i<maxN;i++){
+      html += '<tr><td class="miss-lb"></td>' + cols.map((c,ci)=>{
+        const nm = missByCol[ci][i];
+        return '<td class="miss-name">' + (nm ? esc(nm) : '') + '</td>';
+      }).join('') + '</tr>';
+    }
+    html += '</table>';
+  }
+  document.getElementById('statsBody').innerHTML = html;
+}
+
+/* 全部明细：原来的 √ / 假 / 空白 二维矩阵（即导出 Excel 的第 1 个表） */
+function renderFullMatrix(title, cols, filename){
+  const body = document.getElementById('statsBody');
+  let html = matrixHeader(title, filename);
+  html += '<table class="tbl matrix"><tr><th style="min-width:52px;">小组</th><th style="min-width:64px;">姓名</th>';
+  cols.forEach(c=>{ html += '<th>'+c.date+'</th>'; });
+  html += '</tr><tr><th></th><th></th>';
+  cols.forEach(c=>{ html += '<th>'+esc(c.subject)+'</th>'; });
+  html += '</tr><tr><th></th><th></th>';
+  cols.forEach(c=>{ html += '<th>'+esc(c.hw)+'</th>'; });
+  html += '</tr>';
+  DATA.settings.students.forEach(s=>{
+    html += '<tr><td>'+s.group+'</td><td class="name">'+esc(s.name)+'</td>';
+    cols.forEach(c=>{
+      const st = statusOf(c.rec, s.id);
+      html += '<td class="'+markClass(st)+'">'+markOf(st)+'</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</table>';
+  body.innerHTML = html;
+}
+
+/* ================= 渲染：记录 ================= */
+function renderRecords(){
+  const list = document.getElementById('recordsList');
+
+  const recs = DATA.records.slice().sort((a,b)=> (b.date+b.subject+b.hw).localeCompare(a.date+a.subject+a.hw));
+  if(!recs.length){ list.innerHTML = '<div class="hint" style="text-align:center;padding:20px;">还没有任何记录。</div>'; return; }
+  let html = '';
+  recs.forEach(r=>{
+    let done=0,excused=0,total=DATA.settings.students.length;
+    DATA.settings.students.forEach(s=>{ const st=statusOf(r,s.id); if(st===STATUS.done)done++; else if(st===STATUS.excused)excused++; });
+    const due = total-excused; const rt = due>0?Math.round(done/due*1000)/10:0;
+    html += '<div class="record-item">'+
+      '<div class="rmeta"><b>'+r.date+' · '+esc(r.subject)+' · '+esc(r.hw)+'</b><br><span class="d">已交 '+done+'/'+total+' · 上交率 '+rt+'%</span></div>'+
+      '<div class="rec-actions">'+
+        '<button class="act-btn" style="flex:1;min-width:140px;" onclick="openRecord(\''+r.id+'\')">查看</button>'+
+        '<button class="act-btn" style="color:var(--danger);border-color:var(--danger);" onclick="askDeleteRecord(\''+r.id+'\')">删除</button>'+
+      '</div></div>';
+  });
+  list.innerHTML = html;
+}
+function openRecord(id){
+  const r = DATA.records.find(x=>x.id===id); if(!r) return;
+  curDate = r.date; curSubject = r.subject; curHomework = r.hw;
+  switchView('checkin');
+  toast('已打开：'+r.date+' '+r.subject+' '+r.hw);
+}
+let pendingDeleteId = null; // 待删除的记录 id，'__all__' 表示删除全部
+function askDeleteRecord(id){ pendingDeleteId = id; pinMode = 'delete'; showPinModal(); }
+function askDeleteAllRecords(){ pendingDeleteId = '__all__'; pinMode = 'delete'; showPinModal(); }
+function doDeleteRecord(id){
+  DATA.records = DATA.records.filter(x=>x.id!==id);
+  save(); renderAll(); toast('已删除该条记录');
+}
+function doDeleteAllRecords(){
+  const n = DATA.records.length;
+  DATA.records = [];
+  save(); renderAll(); toast('已删除全部 '+n+' 条记录');
+}
+
+/* ================= 渲染：设置 ================= */
+function renderSettings(){
+  document.getElementById('setSchoolName').value = DATA.settings.schoolName || '';
+  document.getElementById('setClassName').value = DATA.settings.className;
+  document.getElementById('setRoster').value = DATA.settings.students.map(s=> s.group+' '+s.name).join('\n');
+  document.getElementById('stuCount').textContent = DATA.settings.students.length;
+  document.getElementById('setPin').value = DATA.settings.pin;
+
+  const fillHM = (hId, mId, t)=>{
+    const hSel = document.getElementById(hId); hSel.innerHTML='';
+    for(let i=0;i<24;i++){ const o=document.createElement('option'); o.value=i; o.textContent=String(i).padStart(2,'0'); if(i===t.hour) o.selected=true; hSel.appendChild(o); }
+    const mSel = document.getElementById(mId); mSel.innerHTML='';
+    for(let i=0;i<60;i+=5){ const o=document.createElement('option'); o.value=i; o.textContent=String(i).padStart(2,'0'); if(i===t.minute) o.selected=true; mSel.appendChild(o); }
+  };
+  fillHM('setOpenHour','setOpenMinute', openFrom());
+  fillHM('setDeadlineHour','setDeadlineMinute', deadline());
+  document.getElementById('setWorkdayOnly').checked = workdayOnly();
+
+  const sm = document.getElementById('subjectManager'); sm.innerHTML='';
+  DATA.settings.subjects.forEach(s=>{
+    const c = document.createElement('span'); c.className='chip';
+    c.innerHTML = esc(s)+' <button style="font-weight:900;color:var(--danger);" onclick="rmSubject(\''+escJs(s)+'\')">×</button>';
+    sm.appendChild(c);
+  });
+  const hm = document.getElementById('hwManager'); hm.innerHTML='';
+  DATA.settings.homeworkTypes.forEach(h=>{
+    const c = document.createElement('span'); c.className='chip';
+    c.innerHTML = esc(h)+' <button style="font-weight:900;color:var(--danger);" onclick="rmHw(\''+escJs(h)+'\')">×</button>';
+    hm.appendChild(c);
+  });
+}
+function escJs(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function rmSubject(s){ DATA.settings.subjects = DATA.settings.subjects.filter(x=>x!==s); save(); renderSettings(); }
+function rmHw(h){ DATA.settings.homeworkTypes = DATA.settings.homeworkTypes.filter(x=>x!==h); save(); renderSettings(); }
+
+function idNum(s){ const n = parseInt(String(s.id).replace(/\D/g,''),10); return isNaN(n) ? 0 : n; }
+
+/* 稳定编号：老学生（在默认名单里）锁定基准编号，新学生分配全新编号，避免中间插入导致错位 */
+function stableRoster(parsed){
+  const base = defaultStudents();
+  const baseMap = {};
+  base.forEach(s=> baseMap[s.name] = s.id);
+  const baseMax = base.reduce((m,s)=> Math.max(m, idNum(s)), 0);
+
+  const curMap = {};
+  DATA.settings.students.forEach(s=>{ curMap[s.name] = s; });
+
+  let nextId = baseMax + 1;
+  DATA.settings.students.forEach(s=>{ if(idNum(s) >= nextId) nextId = idNum(s) + 1; });
+
+  const used = new Set();
+  return parsed.map(p=>{
+    let id;
+    const baseId = baseMap[p.name];
+    if(baseId && !used.has(baseId)){
+      id = baseId;                                              // 老学生：基准编号
+    } else if(curMap[p.name] && idNum(curMap[p.name]) > baseMax && !used.has(curMap[p.name].id)){
+      id = curMap[p.name].id;                                   // 新学生：保留已正确分配的新编号
+    } else {
+      while(used.has('s'+nextId)) nextId++;                     // 分配全新编号
+      id = 's'+nextId; nextId++;
+    }
+    used.add(id);
+    return { id:id, name:p.name, group:p.group };
+  });
+}
+
+function applyRoster(){
+  const text = document.getElementById('setRoster').value;
+  const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+  const parsed = [];
+  lines.forEach(line=>{
+    const parts = line.split(/[\s\t]+/);
+    let group = 1, name;
+    if(parts.length>=2 && /^\d+$/.test(parts[0])){ group = parseInt(parts[0],10); name = parts.slice(1).join(' '); }
+    else { name = parts.join(' '); }
+    parsed.push({ group:group, name:name });
+  });
+  if(!parsed.length){ toast('名单为空'); return; }
+  DATA.settings.students = stableRoster(parsed);
+  save(); renderSettings();
+  toast('已保存 '+DATA.settings.students.length+' 名学生');
+}
+
+/* 启动时自动纠正：若因名单中间插入新学生导致老学生编号错位，则恢复正确编号 */
+function fixStudentIds(){
+  const base = defaultStudents();
+  const baseMap = {};
+  base.forEach(s=> baseMap[s.name] = s.id);
+  const hasNew = DATA.settings.students.some(s=> !baseMap[s.name]);
+  if(!hasNew) return;
+  const shifted = DATA.settings.students.some(s=> baseMap[s.name] && baseMap[s.name] !== s.id);
+  if(!shifted) return;
+  DATA.settings.students = stableRoster(DATA.settings.students.map(s=>({ group:s.group, name:s.name })));
+  save();
+}
+function loadSample(){
+  DATA.settings.students = defaultStudents();
+  save(); renderSettings();
+  toast('已恢复默认名单');
+}
+
+/* ================= 导出 ================= */
+function download(filename, content, mime){
+  const blob = new Blob([content], {type:mime||'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 500);
+}
+function csvCell(v){ v = (v==null?'':String(v)); if(/[",\n]/.test(v)) v = '"'+v.replace(/"/g,'""')+'"'; return v; }
+function toCsv(headers, rows){
+  const lines = [headers.map(csvCell).join(',')];
+  rows.forEach(r=> lines.push(r.map(csvCell).join(',')));
+  return '\ufeff' + lines.join('\r\n');
+}
+function downloadMatrix(){
+  if(!currentMatrix) return;
+  exportMatrixXls(currentMatrix.title, currentMatrix.cols, currentMatrix.filename);
+}
+function xlsCellHtml(st){
+  if(st===STATUS.done) return '<b style="color:#16a34a;">√</b>';
+  if(st===STATUS.excused) return '假';
+  return '';
+}
+
+/* ================= 多工作表 Excel（.xlsx，零依赖自建） =================
+   共 4 个工作表：
+     ① 已交√     —— 只标 已交「√」、请假「假」（与网页显示一致）
+     ② 未交×     —— 只标 未交「×」、请假「假」（专查谁没交）
+     ③ 全部√×假  —— 三种状态全标
+     ④ 未交名单  —— 每次作业一竖列，列出该次未交学生（日期/科目/项目/姓名…）
+   实现：手写最小 OOXML + ZIP(store) 打包，不加载任何外部库，离线可用。
+   ⚠ 只涉及导出，不改动任何 DATA 数据。 */
+
+const XS = { PLAIN:0, HEAD:1, CELL:2, DONE:3, MISS:4, BOLD:5 };
+const XLS_FONT = '微软雅黑';
+
+let _crcTable = null;
+function crc32(u8){
+  if(!_crcTable){
+    _crcTable = new Int32Array(256);
+    for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c = (c&1) ? (0xEDB88320 ^ (c>>>1)) : (c>>>1); _crcTable[n]=c; }
+  }
+  let crc = -1;
+  for(let i=0;i<u8.length;i++) crc = (crc>>>8) ^ _crcTable[(crc ^ u8[i]) & 0xFF];
+  return (crc ^ -1) >>> 0;
+}
+/* ZIP 打包（仅存储不压缩，符合规范，Excel 可直接打开） */
+function zipStore(files){
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0;
+  files.forEach(f=>{
+    const nb = enc.encode(f.name), data = f.data, crc = crc32(data);
+    const lh = new Uint8Array(30 + nb.length); const lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(6, 0x0800, true);
+    lv.setUint16(8, 0, true); lv.setUint16(10, 0, true); lv.setUint16(12, 0x21, true);
+    lv.setUint32(14, crc, true); lv.setUint32(18, data.length, true); lv.setUint32(22, data.length, true);
+    lv.setUint16(26, nb.length, true); lv.setUint16(28, 0, true);
+    lh.set(nb, 30);
+    parts.push(lh, data);
+
+    const ch = new Uint8Array(46 + nb.length); const cv = new DataView(ch.buffer);
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true); cv.setUint16(10, 0, true); cv.setUint16(12, 0, true); cv.setUint16(14, 0x21, true);
+    cv.setUint32(16, crc, true); cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true);
+    cv.setUint16(28, nb.length, true); cv.setUint16(30, 0, true); cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true); cv.setUint16(36, 0, true); cv.setUint32(38, 0, true); cv.setUint32(42, offset, true);
+    ch.set(nb, 46);
+    central.push(ch);
+    offset += lh.length + data.length;
+  });
+  const cenSize = central.reduce((a,b)=> a+b.length, 0);
+  const eocd = new Uint8Array(22); const ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true); ev.setUint16(4, 0, true); ev.setUint16(6, 0, true);
+  ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cenSize, true); ev.setUint32(16, offset, true); ev.setUint16(20, 0, true);
+  return parts.concat(central, [eocd]);
+}
+function xmlEsc(v){
+  return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+}
+function colName(n){ let s=''; while(n>0){ const r=(n-1)%26; s=String.fromCharCode(65+r)+s; n=Math.floor((n-1)/26); } return s; }
+
+function xlsxStyles(){
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
+    '<fonts count="4">'+
+      '<font><sz val="11"/><name val="'+XLS_FONT+'"/></font>'+
+      '<font><b/><sz val="11"/><name val="'+XLS_FONT+'"/></font>'+
+      '<font><b/><sz val="11"/><color rgb="FF16A34A"/><name val="'+XLS_FONT+'"/></font>'+
+      '<font><b/><sz val="11"/><color rgb="FFDC2626"/><name val="'+XLS_FONT+'"/></font>'+
+    '</fonts>'+
+    '<fills count="3">'+
+      '<fill><patternFill patternType="none"/></fill>'+
+      '<fill><patternFill patternType="gray125"/></fill>'+
+      '<fill><patternFill patternType="solid"><fgColor rgb="FFEDF2F7"/><bgColor indexed="64"/></patternFill></fill>'+
+    '</fills>'+
+    '<borders count="2">'+
+      '<border><left/><right/><top/><bottom/><diagonal/></border>'+
+      '<border><left style="thin"><color rgb="FFD0D5DD"/></left><right style="thin"><color rgb="FFD0D5DD"/></right>'+
+      '<top style="thin"><color rgb="FFD0D5DD"/></top><bottom style="thin"><color rgb="FFD0D5DD"/></bottom><diagonal/></border>'+
+    '</borders>'+
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
+    '<cellXfs count="6">'+
+      '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+
+      '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'+
+      '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'+
+      '<xf numFmtId="0" fontId="2" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'+
+      '<xf numFmtId="0" fontId="3" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'+
+      '<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>'+
+    '</cellXfs>'+
+    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'+
+    '</styleSheet>';
+}
+function sheetXml(sh){
+  let xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">';
+  if(sh.freeze){
+    const tl = colName(sh.freeze.x+1)+(sh.freeze.y+1);
+    xml += '<sheetViews><sheetView workbookViewId="0"><pane xSplit="'+sh.freeze.x+'" ySplit="'+sh.freeze.y+
+      '" topLeftCell="'+tl+'" activePane="bottomRight" state="frozen"/><selection pane="bottomRight" activeCell="'+tl+'" sqref="'+tl+'"/></sheetView></sheetViews>';
+  }
+  if(sh.widths && sh.widths.length){
+    xml += '<cols>';
+    sh.widths.forEach((w,i)=>{ xml += '<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>'; });
+    xml += '</cols>';
+  }
+  xml += '<sheetData>';
+  sh.rows.forEach((row,ri)=>{
+    xml += '<row r="'+(ri+1)+'">';
+    (row||[]).forEach((c,ci)=>{
+      if(c==null) return;
+      const ref = colName(ci+1)+(ri+1), st = (c.s==null ? 0 : c.s);
+      if(typeof c.v === 'number') xml += '<c r="'+ref+'" s="'+st+'"><v>'+c.v+'</v></c>';
+      else if(c.v === '' || c.v == null) xml += '<c r="'+ref+'" s="'+st+'"/>';
+      else xml += '<c r="'+ref+'" s="'+st+'" t="inlineStr"><is><t xml:space="preserve">'+xmlEsc(c.v)+'</t></is></c>';
+    });
+    xml += '</row>';
+  });
+  xml += '</sheetData>';
+  if(sh.merges && sh.merges.length){
+    xml += '<mergeCells count="'+sh.merges.length+'">';
+    sh.merges.forEach(m=>{ xml += '<mergeCell ref="'+m+'"/>'; });
+    xml += '</mergeCells>';
+  }
+  return xml + '</worksheet>';
+}
+function buildXlsx(sheets){
+  const enc = new TextEncoder(), files = [];
+  const H = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  const NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  files.push({ name:'[Content_Types].xml', data: enc.encode(H+
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
+    '<Default Extension="xml" ContentType="application/xml"/>'+
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+
+    sheets.map((s,i)=>'<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join('')+
+    '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'+
+    '</Types>') });
+  files.push({ name:'_rels/.rels', data: enc.encode(H+
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+    '<Relationship Id="rId1" Type="'+NS+'/officeDocument" Target="xl/workbook.xml"/></Relationships>') });
+  files.push({ name:'xl/workbook.xml', data: enc.encode(H+
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="'+NS+'"><sheets>'+
+    sheets.map((s,i)=>'<sheet name="'+xmlEsc(s.name)+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>').join('')+
+    '</sheets></workbook>') });
+  files.push({ name:'xl/_rels/workbook.xml.rels', data: enc.encode(H+
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+    sheets.map((s,i)=>'<Relationship Id="rId'+(i+1)+'" Type="'+NS+'/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>').join('')+
+    '<Relationship Id="rId'+(sheets.length+1)+'" Type="'+NS+'/styles" Target="styles.xml"/></Relationships>') });
+  files.push({ name:'xl/styles.xml', data: enc.encode(xlsxStyles()) });
+  sheets.forEach((s,i)=>{ files.push({ name:'xl/worksheets/sheet'+(i+1)+'.xml', data: enc.encode(sheetXml(s)) }); });
+  return zipStore(files);
+}
+function downloadParts(filename, parts, mime){
+  const blob = new Blob(parts, {type:mime||'application/octet-stream'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 500);
+}
+
+/* 单元格标记：kind = 'done'(只标√) | 'miss'(只标×) | 'all'(全标)；请假三表都标「假」 */
+function xlsxMarkCell(st, kind){
+  if(st === STATUS.excused) return { v:'假', s:XS.CELL };
+  if(kind === 'all'){
+    if(st === STATUS.done) return { v:'√', s:XS.DONE };
+    if(st === STATUS.none) return { v:'×', s:XS.MISS };
+  } else if(kind === 'done'){
+    if(st === STATUS.done) return { v:'√', s:XS.DONE };
+  } else if(kind === 'miss'){
+    if(st === STATUS.none) return { v:'×', s:XS.MISS };
+  }
+  return { v:'', s:XS.CELL };
+}
+
+function exportMatrixXls(title, cols, filename){
+  const students = DATA.settings.students.slice()
+    .sort((a,b)=> (a.group - b.group) || (idNum(a) - idNum(b)));
+  const W = cols.length + 2;
+
+  /* 表 ①②③：小组 + 姓名 + 每次作业一列；表头三行 —— 日期 / 科目 / 项目 */
+  const matrixSheet = (kind, sheetName, tip)=>{
+    const rows = [];
+    const t = [{ v:title+'　'+tip, s:XS.HEAD }];
+    for(let i=1;i<W;i++) t[i] = { v:'', s:XS.HEAD };
+    rows.push(t);
+    rows.push([{v:'小组',s:XS.HEAD},{v:'姓名',s:XS.HEAD}].concat(cols.map(c=>({v:c.date, s:XS.HEAD}))));
+    rows.push([{v:'',s:XS.HEAD},{v:'',s:XS.HEAD}].concat(cols.map(c=>({v:c.subject, s:XS.HEAD}))));
+    rows.push([{v:'',s:XS.HEAD},{v:'',s:XS.HEAD}].concat(cols.map(c=>({v:c.hw, s:XS.HEAD}))));
+    students.forEach(s=>{
+      rows.push([{v:s.group, s:XS.CELL},{v:s.name, s:XS.BOLD}]
+        .concat(cols.map(c=> xlsxMarkCell(statusOf(c.rec, s.id), kind))));
+    });
+    return { name:sheetName, rows:rows, merges:['A1:'+colName(W)+'1'],
+             widths:[6,20].concat(cols.map(()=>12)), freeze:{x:2, y:4} };
+  };
+
+  /* 表 ④：每次作业一竖列，往下罗列该次未交学生 */
+  const missByCol = cols.map(c=> students.filter(s=> statusOf(c.rec, s.id) === STATUS.none).map(s=> s.name));
+  const maxN = missByCol.reduce((m,a)=> Math.max(m, a.length), 0);
+  const rows4 = [
+    [{v:'日期',s:XS.HEAD}].concat(cols.map(c=>({v:c.date, s:XS.HEAD}))),
+    [{v:'科目',s:XS.HEAD}].concat(cols.map(c=>({v:c.subject, s:XS.HEAD}))),
+    [{v:'项目',s:XS.HEAD}].concat(cols.map(c=>({v:c.hw, s:XS.HEAD})))
+  ];
+  for(let i=0;i<maxN;i++){
+    rows4.push([{v:'',s:XS.CELL}].concat(cols.map((c,ci)=>
+      missByCol[ci][i] != null ? {v:missByCol[ci][i], s:XS.CELL} : {v:'', s:XS.CELL})));
+  }
+  const sheet4 = { name:'未交名单', rows:rows4, widths:[10].concat(cols.map(()=>16)) };
+
+  const sheets = [
+    matrixSheet('done', '已交√',    '【已交 √ / 请假 假】'),
+    matrixSheet('miss', '未交×',    '【未交 × / 请假 假】'),
+    matrixSheet('all',  '全部√×假', '【√ 已交 / × 未交 / 假 请假】'),
+    sheet4
+  ];
+  downloadParts(String(filename).replace(/\.xls$/i,'')+'.xlsx', buildXlsx(sheets),
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+}
+function downloadStudent(){
+  if(!currentStudentId) return;
+  exportStudentXls(currentStudentId);
+}
+function exportStudentXls(id){
+  const s = DATA.settings.students.find(x=>x.id===id); if(!s) return;
+  const recs = DATA.records.slice().sort((a,b)=>(b.date+b.subject+b.hw).localeCompare(a.date+a.subject+a.hw));
+  let done=0, excused=0, total=0;
+  recs.forEach(r=>{ const st=statusOf(r,s.id); total++; if(st===STATUS.done)done++; else if(st===STATUS.excused)excused++; });
+  const rate = rateOf({total:total, done:done, excused:excused});
+  let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body>';
+  html += '<table border="1">';
+  html += '<tr><td colspan="4" style="font-weight:bold;font-size:14px;">'+esc(s.name)+'（第 '+s.group+' 组）历次作业上交情况 · 上交率 '+rate+'%</td></tr>';
+  html += '<tr><td>日期</td><td>科目</td><td>作业</td><td>状态</td></tr>';
+  recs.forEach(r=>{
+    html += '<tr><td>'+r.date+'</td><td>'+esc(r.subject)+'</td><td>'+esc(r.hw)+'</td><td>'+xlsCellHtml(statusOf(r,s.id))+'</td></tr>';
+  });
+  html += '</table></body></html>';
+  download('学生上交记录-'+s.name+'.xls', html, 'application/vnd.ms-excel;charset=utf-8');
+}
+function exportFullCsv(){
+  const headers = ['日期','科目','作业','姓名','小组','状态'];
+  const rows = [];
+  DATA.records.forEach(r=>{
+    DATA.settings.students.forEach(s=>{
+      rows.push([r.date, r.subject, r.hw, s.name, s.group, STATUS_LABEL[statusOf(r,s.id)]]);
+    });
+  });
+  download('作业上交统计-全部记录.csv', toCsv(headers, rows), 'text/csv;charset=utf-8');
+}
+function exportJson(){
+  download('班级作业数据备份.json', JSON.stringify(DATA, null, 2), 'application/json');
+}
+function importJson(file){
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const d = JSON.parse(reader.result);
+      DATA = normalize(d);
+      save(); renderAll();
+      toast('导入成功');
+    }catch(e){ toast('导入失败：文件格式不对'); }
+  };
+  reader.readAsText(file);
+}
+
+/* ================= 视图切换 ================= */
+function switchView(v){
+  if(v==='settings' && activeView!=='settings'){
+    pinMode = 'settings';
+    showPinModal();
+    pendingView = 'settings';
+    return;
+  }
+  activateView(v);
+}
+let pendingView = null;
+let pinMode = null; // 'settings' | 'unlock' | 'delete' | 'student'
+function showPinModal(){
+  document.getElementById('pinMask').classList.add('show');
+  document.getElementById('pinInput').value='';
+  setTimeout(()=> document.getElementById('pinInput').focus(), 50);
+}
+function activateView(v){
+  activeView = v;
+  document.querySelectorAll('.view').forEach(el=> el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelectorAll('nav.bottom button').forEach(b=> b.classList.toggle('on', b.dataset.view===v));
+  if(v==='stats') renderStats();
+  if(v==='records') renderRecords();
+  if(v==='settings') renderSettings();
+  if(v==='checkin') renderCheckin();
+}
+function renderAll(){
+  document.getElementById('hdrClassName').textContent = (DATA.settings.schoolName ? DATA.settings.schoolName + ' · ' : '') + DATA.settings.className;
+  renderCheckin();
+  if(activeView==='stats') renderStats();
+  if(activeView==='records') renderRecords();
+}
+
+/* ================= 事件绑定 ================= */
+function bindEvents(){
+  document.getElementById('prevDay').onclick = ()=>{ curDate = shiftDate(-1); renderCheckin(); };
+  document.getElementById('nextDay').onclick = ()=>{ curDate = shiftDate(1); renderCheckin(); };
+  document.getElementById('btnToday').onclick = ()=>{ curDate = todayStr(); renderCheckin(); };
+  document.getElementById('dateInput').onchange = e=>{ curDate = e.target.value; renderCheckin(); };
+
+  document.getElementById('clearAll').onclick = ()=>{
+    if(!curSubject||!curHomework) return;
+    const r = getOrCreateRecord();
+    DATA.settings.students.forEach(s=> setStatus(r,s.id,STATUS.none));
+    save(); renderCheckin();
+  };
+  document.getElementById('invert').onclick = ()=>{
+    if(!curSubject||!curHomework) return;
+    const r = getOrCreateRecord();
+    DATA.settings.students.forEach(s=>{
+      const st = statusOf(r,s.id);
+      if(st===STATUS.none) setStatus(r,s.id,STATUS.done);
+      else if(st===STATUS.done) setStatus(r,s.id,STATUS.none);
+    });
+    save(); renderCheckin();
+  };
+
+  document.querySelectorAll('nav.bottom button').forEach(b=> b.onclick = ()=> switchView(b.dataset.view));
+
+  document.getElementById('statsTabs').querySelectorAll('button').forEach(b=>{
+    b.onclick = ()=>{
+      statsTab = b.dataset.t;
+      /* 每次切换模块都回到默认视图「未交名单」 */
+      statsView = 'miss';
+      studentView = 'miss';
+      currentMatrix = null;
+      document.getElementById('statsTabs').querySelectorAll('button').forEach(x=>x.classList.toggle('on', x===b));
+      renderStats();
+    };
+  });
+
+  document.getElementById('applyRoster').onclick = applyRoster;
+  document.getElementById('loadSample').onclick = loadSample;
+  document.getElementById('setSchoolName').onchange = e=>{ DATA.settings.schoolName = e.target.value.trim(); save(); renderAll(); };
+  document.getElementById('setClassName').onchange = e=>{ DATA.settings.className = e.target.value.trim()||'班级'; save(); renderAll(); };
+  document.getElementById('addSubject').onclick = addSubject;
+  document.getElementById('addHw').onclick = addHw;
+  document.getElementById('newSubject').onkeydown = e=>{ if(e.key==='Enter') addSubject(); };
+  document.getElementById('newHw').onkeydown = e=>{ if(e.key==='Enter') addHw(); };
+  document.getElementById('savePin').onclick = ()=>{
+    const v = document.getElementById('setPin').value.trim();
+    DATA.settings.pin = v||'0000'; save(); toast('密码已保存');
+  };
+  document.getElementById('saveDeadline').onclick = ()=>{
+    const oh = parseInt(document.getElementById('setOpenHour').value,10)||0;
+    const om = parseInt(document.getElementById('setOpenMinute').value,10)||0;
+    const dh = parseInt(document.getElementById('setDeadlineHour').value,10)||0;
+    const dm = parseInt(document.getElementById('setDeadlineMinute').value,10)||0;
+    if(oh*60+om >= dh*60+dm){ toast('开始时间要早于截止时间'); return; }
+    DATA.settings.openFrom = { hour:oh, minute:om };
+    DATA.settings.deadline = { hour:dh, minute:dm };
+    DATA.settings.workdayOnly = document.getElementById('setWorkdayOnly').checked;
+    save(); renderAll();
+    toast('开放时间：'+fmtOpen()+' - '+fmtDeadline()+(DATA.settings.workdayOnly?'（仅法定工作日）':'（每天）'));
+  };
+
+  document.getElementById('exportJson').onclick = exportJson;
+  document.getElementById('exportFullCsv').onclick = exportFullCsv;
+  document.getElementById('importJson').onclick = ()=> document.getElementById('importFile').click();
+  document.getElementById('importFile').onchange = e=>{ if(e.target.files[0]) importJson(e.target.files[0]); e.target.value=''; };
+  document.getElementById('wipeData').onclick = ()=>{
+    if(!confirm('确定清空所有数据（含全部历史记录）？请先导出备份！')) return;
+    if(!confirm('再次确认：真的要清空所有数据吗？')) return;
+    DATA = defaultData(); save(); renderAll(); toast('已清空');
+  };
+
+  // PIN（进入设置 / 老师解锁 / 删除记录 / 查看学生详情）
+  document.getElementById('pinCancel').onclick = ()=>{ document.getElementById('pinMask').classList.remove('show'); pendingView=null; pinMode=null; pendingDeleteId=null; pendingStudentId=null; };
+  document.getElementById('pinOk').onclick = checkPin;
+  document.getElementById('pinInput').onkeydown = e=>{ if(e.key==='Enter') checkPin(); };
+  document.getElementById('btnUnlock').onclick = ()=>{ pinMode='unlock'; showPinModal(); };
+
+  // 记录页：删除全部记录
+  document.getElementById('clearAllRecords').onclick = askDeleteAllRecords;
+}
+function checkPin(){
+  const v = document.getElementById('pinInput').value;
+  const pin = DATA.settings.pin || '0000';
+  if(v === pin){
+    document.getElementById('pinMask').classList.remove('show');
+    if(pinMode === 'settings'){ if(pendingView) activateView(pendingView); pendingView = null; }
+    else if(pinMode === 'unlock'){ unlocked = true; toast('已解锁，现在可以编辑了'); renderCheckin(); }
+    else if(pinMode === 'delete'){
+      const id = pendingDeleteId;
+      if(id === '__all__') doDeleteAllRecords();
+      else if(id) doDeleteRecord(id);
+    }
+    else if(pinMode === 'student'){
+      const id = pendingStudentId;
+      if(id) showStudentDetail(id);
+    }
+    pinMode = null; pendingDeleteId = null; pendingStudentId = null;
+  } else { toast('密码错误'); document.getElementById('pinInput').value=''; }
+}
+function addSubject(){
+  const v = document.getElementById('newSubject').value.trim();
+  if(!v) return;
+  if(!DATA.settings.subjects.includes(v)) DATA.settings.subjects.push(v);
+  document.getElementById('newSubject').value=''; save(); renderSettings();
+}
+function addHw(){
+  const v = document.getElementById('newHw').value.trim();
+  if(!v) return;
+  if(!DATA.settings.homeworkTypes.includes(v)) DATA.settings.homeworkTypes.push(v);
+  document.getElementById('newHw').value=''; save(); renderSettings();
+}
+
+function shiftDate(days){
+  const d = new Date(curDate+'T00:00:00');
+  d.setDate(d.getDate()+days);
+  const p = n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+
+function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ================= 选班级 ================= */
+function renderClassGate(){
+  const box = document.getElementById('cgGroups');
+  box.innerHTML = CLASS_GROUPS.map(g=>
+    '<div class="cg-group"><h3>'+esc(g.name)+'　'+g.classes.length+' 个班</h3><div class="cg-grid">'+
+    g.classes.map(c=> '<button class="cg-btn" data-c="'+c+'">'+c+'</button>').join('')+
+    (g.tools || []).map(t=> t.href
+      ? '<a class="cg-btn cg-tool" data-tool="'+t.id+'" href="'+esc(t.href)+'"'
+        + (t.blank ? ' target="_blank" rel="noopener"' : '') + '>'+esc(t.label)+'</a>'
+      : '<button class="cg-btn cg-tool" data-tool="'+t.id+'">'+esc(t.label)+'</button>'
+    ).join('')+
+    '</div></div>').join('');
+  box.querySelectorAll('.cg-btn[data-c]').forEach(b=>{ b.onclick = ()=> pickClass(b.dataset.c); });
+  box.querySelectorAll('.cg-btn[data-tool]').forEach(b=>{
+    if(b.tagName === 'A') return;                 // 外链工具交给浏览器原生行为（新窗口打开），不绑脚本
+    b.onclick = ()=>{ if(b.dataset.tool === 'roster') showRosterTool(); };
+  });
+  layoutGate();
+}
+
+/* 按屏幕大小算列数：让单元格尽量接近正方形、撑满整屏，且所有班一页放得下 */
+function layoutGate(){
+  const box = document.getElementById('cgGroups');
+  if(!box || !box.children.length) return;
+  const GAP = 6, HEAD = 22, MIN_H = 38;
+  const W = box.clientWidth - 2;
+  const H = box.clientHeight - box.children.length * (HEAD + 8);   // 扣掉各组标题
+  if(W <= 0 || H <= 0) return;
+  /* 每组占几格 = 班级数 + 工具按钮数 ×2（工具按钮横跨 2 格，不算进去会顶掉一个班） */
+  const counts = CLASS_GROUPS.map(g=> g.classes.length + (g.tools || []).length * 2);
+  let best = null;
+  for(let C = 3; C <= 40; C++){
+    const rows = counts.reduce((s,n)=> s + Math.ceil(n / C), 0);
+    const h = (H - (rows - counts.length) * GAP) / rows;
+    const w = (W - (C - 1) * GAP) / C;
+    if(h < MIN_H) continue;                       // 太矮就不要，宁可滚动
+    const aspect = Math.max(w / h, h / w);        // 越接近 1 越"方"
+    if(!best || aspect < best.aspect) best = { C:C, aspect:aspect, rows:rows };
+  }
+  if(!best) return;                               // 屏幕太小 → 保持默认（可滚动）
+  box.style.setProperty('--cg-cols', best.C);
+  /* 组的高度按各自的行数分配，行高 1fr 自动填满 */
+  Array.prototype.forEach.call(box.children, (el, i)=>{
+    el.style.flexGrow = Math.ceil(counts[i] / best.C);
+  });
+}
+window.addEventListener('resize', ()=>{
+  if(document.getElementById('classGate').classList.contains('show')) layoutGate();
+});
+function showGate(){
+  try{
+    /* 回到选班页 = 本标签页"已进入"标记清掉；同时清掉已隐藏班的残留记忆 */
+    sessionStorage.removeItem('hw_entered');
+    const s = localStorage.getItem('hw_current_class');
+    if(s && VISIBLE_CLASSES.indexOf(s) < 0) localStorage.removeItem('hw_current_class');
+  }catch(e){}
+  /* 必须先显示再渲染 —— 布局计算要读真实的宽高（display:none 时读不到） */
+  document.getElementById('classGate').classList.add('show');
+  renderClassGate();
+}
+function pickClass(c){
+  if(ALL_CLASSES.indexOf(c) < 0){ toast('班级号不认识'); return; }
+  try{
+    sessionStorage.setItem('hw_entered', c);                  // 刚选完 → 这次放行进入
+    if(REMEMBER_CLASS) localStorage.setItem('hw_current_class', c);
+    else localStorage.removeItem('hw_current_class');
+  }catch(e){}
+  location.href = location.pathname + '?c=' + encodeURIComponent(c);
+}
+
+/* ================= 便捷名单转换（帮老师把名单录进「设置 → 学生名单」） =================
+   输入：十二个方框（第一组…第十二组），每行一个姓名；输出：自动编成「组号 姓名」的行，一键复制。
+   空着的组不产生任何输出，所以实际只有 6 个组也照样能用。
+   纯前端、不碰任何班级数据。 */
+const CN_NUM = ['一','二','三','四','五','六','七','八','九','十','十一','十二'];
+/* 布局由 CSS 固定：左边 4 组一排 × 3 排、右边结果面板；窄屏自动降为 2 列 */
+function buildRosterTool(){
+  const box = document.getElementById('rtGroups');
+  if(box.children.length) return;                       // 只建一次
+  box.innerHTML = CN_NUM.map((n,i)=>
+    '<div class="rt-g"><h4>第'+n+'组</h4>'+
+    '<textarea data-g="'+(i+1)+'" spellcheck="false" placeholder="一行一个姓名"></textarea></div>'
+  ).join('');
+  box.addEventListener('input', renderRosterOut);
+  document.getElementById('rtClear').onclick = function(){
+    box.querySelectorAll('textarea').forEach(t=> t.value='');
+    renderRosterOut(); toast('已清空');
+  };
+  document.getElementById('rtCopy').onclick = copyRosterOut;
+}
+/* 收集各框里的姓名 → 「组号 姓名」 */
+function rosterLines(){
+  const out = [];
+  document.querySelectorAll('#rtGroups textarea').forEach(function(t){
+    const g = t.dataset.g;
+    t.value.split(/\r?\n/).forEach(function(line){
+      let nm = String(line).trim();
+      if(!nm) return;
+      nm = nm.replace(/^\d+\s+/, '');                   // 已带组号的（如「1 张三」）先把组号去掉，避免重复
+      nm = nm.replace(/\s+/g, ' ').trim();
+      if(nm) out.push(g + ' ' + nm);
+    });
+  });
+  return out;
+}
+function renderRosterOut(){
+  const lines = rosterLines();
+  const el = document.getElementById('rtOut');
+  if(el) el.value = lines.join('\n');
+  const c = document.getElementById('rtCount');
+  if(c) c.textContent = lines.length ? '（共 ' + lines.length + ' 人）' : '';
+}
+function showRosterTool(standalone){
+  buildRosterTool();
+  renderRosterOut();
+  const back = document.getElementById('rtBack');
+  if(standalone){
+    /* 设置页那个超链接就是这样打开的：只显示工具，不加载任何班级数据 */
+    document.body.classList.add('standalone-tool');
+    document.title = '便捷名单转换';
+    if(back){
+      back.textContent = '关闭本页';
+      back.onclick = function(){
+        try{ window.close(); }catch(e){}
+        /* 若浏览器不允许脚本关标签（或本来是手工打开的），就退回选班页 */
+        setTimeout(function(){ location.href = location.pathname; }, 180);
+      };
+    }
+  } else {
+    if(back){
+      back.textContent = '返回选班页';
+      back.onclick = function(){
+        document.getElementById('rosterTool').classList.remove('show');
+        document.getElementById('classGate').classList.add('show');
+        layoutGate();
+      };
+    }
+    const g = document.getElementById('classGate');
+    if(g) g.classList.remove('show');
+  }
+  document.getElementById('rosterTool').classList.add('show');
+}
+async function copyRosterOut(){
+  const el = document.getElementById('rtOut');
+  const txt = el ? el.value : '';
+  if(!txt.trim()){ toast('还没有内容 —— 先在方框里输入姓名'); return; }
+  const n = txt.split('\n').filter(Boolean).length;
+  let ok = false;
+  /* 首选：剪贴板 API（https 页面 + 点击操作，一般都能成） */
+  try{ await navigator.clipboard.writeText(txt); ok = true; }catch(e){}
+  /* 兜底：选中 + execCommand */
+  if(!ok){
+    try{
+      el.removeAttribute('readonly'); el.focus(); el.select();
+      ok = document.execCommand('copy');
+      el.setAttribute('readonly','');
+      if(window.getSelection) window.getSelection().removeAllRanges();
+    }catch(e){ ok = false; }
+  }
+  if(!ok){
+    /* 两条路都不行：帮你把内容选中，直接按 Ctrl+C 即可 */
+    try{ el.setAttribute('readonly',''); el.focus(); el.select(); }catch(e){}
+    toast('自动复制没成功 —— 已帮你选中内容，按 Ctrl+C 即可（共 ' + n + ' 人）');
+    return;
+  }
+  toast('已复制 ' + n + ' 人，去「设置 → 学生名单」粘贴即可');
+}
+
+/* ================= 启动 ================= */
+(async function main(){
+  /* 单独打开的工具页（?tool=roster，设置页里那个超链接就是这么开的）：
+     只显示「便捷名单转换」，不加载任何班级数据 */
+  if((function(){ try{ return new URLSearchParams(location.search).get('tool') === 'roster'; }catch(e){ return false; } })()){
+    showRosterTool(true);
+    return;
+  }
+
+  /* 还没选班级 → 只显示选班级首屏，不加载任何数据 */
+  if(!CURRENT_CLASS){ showGate(); return; }
+
+  await initData();
+  fixStudentIds();  // 自动纠正可能存在的编号错位（中间插入新学生导致）
+  if(!DATA.settings.subjects.length) DATA.settings.subjects = defaultSubjects();
+  if(!DATA.settings.homeworkTypes.length) DATA.settings.homeworkTypes = defaultHw();
+  curSubject = DATA.settings.subjects[0] || null;
+  curHomework = DATA.settings.homeworkTypes[0] || null;
+  bindEvents();
+
+  /* 记住本班：进入即写「本标签页已进入」+（勾选时）记下班级，供下次打开用 */
+  try{
+    sessionStorage.setItem('hw_entered', CURRENT_CLASS);
+    if(REMEMBER_CLASS) localStorage.setItem('hw_current_class', CURRENT_CLASS);
+  }catch(e){}
+
+  document.getElementById('hdrClassName').textContent = CURRENT_CLASS + '班';
+  const sw = document.getElementById('switchClassBtn');
+  sw.style.display = '';
+  sw.onclick = showGate;
+
+  /* 页头上的「下次直接进本班」勾选框（默认勾选） */
+  const rc = document.getElementById('rememberClass');
+  rc.checked = REMEMBER_CLASS;
+  rc.onchange = function(){
+    REMEMBER_CLASS = rc.checked;
+    try{
+      localStorage.setItem(REMEMBER_KEY, REMEMBER_CLASS ? '1' : '0');
+      if(REMEMBER_CLASS) localStorage.setItem('hw_current_class', CURRENT_CLASS);
+      else localStorage.removeItem('hw_current_class');
+    }catch(e){}
+    toast(REMEMBER_CLASS ? '已勾选：下次打开直接进本班' : '已取消：下次打开先显示选班页');
+  };
+
+  renderCheckin();
+  const modeLabel = document.getElementById('modeLabel');
+  modeLabel.textContent = '本地模式';
+})();
+</script>
+</body>
+</html>

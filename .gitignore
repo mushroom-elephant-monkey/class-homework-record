@@ -1,0 +1,10 @@
+# 数据与导出文件 —— 可能含真实学生名单，绝不上传
+*.json
+*.csv
+*.xlsx
+*.xls
+
+# 系统文件
+Thumbs.db
+desktop.ini
+.DS_Store
