@@ -180,12 +180,15 @@ const CLASS_GROUPS = [
 
 ### 不写代码也能做这件事
 
-上面那张接口表，其实也是**写给 AI 的**。不需要从零学编程，把需求描述清楚就行：
+上面那张接口表，其实也是**写给 AI 的**。不需要从零学编程，把需求描述清楚就行。
+下面两个都行，按自己的情况选：
 
-- [**DeepSeek Harness**](https://deepseek.com/harness) —— DeepSeek 开源的 agent 运行时，
-  有 Windows / macOS 桌面端，能直接读仓库、改代码、跑测试
+| 工具 | 适合谁 |
+|---|---|
+| **WorkBuddy** | **零基础首选。** 就是个对话框，不用配环境、不用碰命令行、不用装任何东西，中文说清楚就行 |
+| [**DeepSeek Harness**](https://deepseek.com/harness) | DeepSeek 开源的 agent 运行时，有 Windows / macOS 桌面端，能直接读仓库、改代码、跑测试。适合想自己盯着改的人 |
 
-对它说一句：
+不管用哪个，把同一段话发过去就行：
 
 > 给这个单文件网页加一个后端：实现 `GET/POST /api/data?c=<班级ID>` 读写整份 JSON，
 > 每班各存一个 `data-<班级ID>.json`，再加一个 `GET /api/health`。
@@ -308,7 +311,7 @@ Copyright (c) 2026 侯相君 (Hou Xiangjun)
 
 这个工具从界面到 Excel 导出（手写 OOXML + ZIP 那部分最费劲），大部分代码是在 AI 辅助下写出来的。
 
-主力是 **DeepSeek Harness** —— 读项目、定位 bug、改完跑测试，一路下来省的时间没法算。
-**WorkBuddy** 也帮了大忙。
+主力是 **WorkBuddy** —— 从需求、写代码、查 bug 到发布上线，基本全程都在。
+**DeepSeek Harness** 在定位问题和改代码时也帮了大忙。
 
 说句实在话：**DeepSeek 真牛逼。** 🐋
